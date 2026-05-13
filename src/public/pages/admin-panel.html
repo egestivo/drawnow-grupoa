@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Administrador - DrawNow</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body class="bg-gradient">
+
+  <nav class="navbar navbar-dark bg-dark">
+    <div class="container-fluid">
+      <span class="navbar-brand mb-0">
+        DrawNow - Panel Administrador
+      </span>
+      <button class="btn btn-logout" id="adminLogoutBtn">
+        Cerrar Sesión
+      </button>
+    </div>
+  </nav>
+
+  <div class="container-fluid py-4">
+    <!-- Estadísticas generales -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-label">Usuarios Conectados</div>
+          <div class="stat-value" id="totalUsers">0</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-label">Salas Activas</div>
+          <div class="stat-value" id="totalRooms">0</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="stat-label">Ult. Actualización</div>
+          <div class="stat-update-time" id="lastUpdate">--:--:--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detalle de salas -->
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="admin-card-header">
+            Salas en Tiempo Real
+          </div>
+          <div class="admin-card-body">
+            <div id="roomsDetails"></div>
+            <div id="noRoomsMessage" class="no-rooms-message d-none">
+              No hay salas activas en este momento
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/admin-panel.js"></script>
+</body>
+</html>
+

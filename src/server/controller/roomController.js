@@ -1,0 +1,136 @@
+/**
+ * GESTOR DE SALAS - RoomManager
+ * Responsabilidades:
+ *   - Crear nuevas salas
+ *   - Gestionar participantes
+ *   - Eliminar salas
+ *   - Mantener estadísticas
+ */
+class RoomManager {
+  constructor() {
+    this.rooms = [];
+    this.roomIdCounter = 0;
+  }
+
+  /**
+   * Crea una nueva sala de dibujo
+   * @param {string} name - Nombre de la sala
+   * @param {string} createdBy - Nombre del usuario que la crea
+   * @returns {object} Objeto de sala creada
+   */
+  createRoom(name, createdBy) {
+    this.roomIdCounter++;
+    const room = {
+      id: this.roomIdCounter,
+      name: name || `Sala ${this.roomIdCounter}`,
+      createdBy: createdBy || 'Usuario',
+      participants: [],
+      createdAt: new Date(),
+      updated: new Date()
+    };
+    this.rooms.push(room);
+    return room;
+  }
+
+  /**
+   * Añade un usuario a una sala
+   * @param {number} roomId - ID de la sala
+   * @param {string} socketId - ID del socket del usuario
+   * @param {string} username - Nombre del usuario
+   * @returns {object|null} Sala actualizada o null si no existe
+   */
+  joinRoom(roomId, socketId, username) {
+    const room = this.rooms.find(r => r.id === roomId);
+    if (!room) return null;
+
+    if (!room.participants.find(p => p.socketId === socketId)) {
+      room.participants.push({ socketId, username });
+      room.updated = new Date();
+    }
+    return room;
+  }
+
+  /**
+   * Retira un usuario de una sala
+   * @param {number} roomId - ID de la sala
+   * @param {string} socketId - ID del socket del usuario
+   * @returns {object|null} Sala actualizada o null si no existe
+   */
+  leaveRoom(roomId, socketId) {
+    const room = this.rooms.find(r => r.id === roomId);
+    if (!room) return null;
+
+    room.participants = room.participants.filter(p => p.socketId !== socketId);
+    room.updated = new Date();
+    return room;
+  }
+
+  /**
+   * Elimina una sala solo si no hay participantes activos excepto quien la solicita
+   * @param {number} roomId - ID de la sala a eliminar
+   * @param {string} requesterSocketId - ID del socket que solicita la eliminación
+   * @returns {object} { success: boolean, message: string }
+   */
+  deleteRoom(roomId, requesterSocketId) {
+    const room = this.rooms.find(r => r.id === roomId);
+    if (!room) {
+      return { success: false, message: 'Sala no encontrada' };
+    }
+
+    // Contar participantes activos (excluyendo quien solicita la eliminación)
+    const activeParticipants = room.participants.filter(p => p.socketId !== requesterSocketId);
+    if (activeParticipants.length > 0) {
+      return {
+        success: false,
+        message: 'No puedes eliminar una sala con participantes activos en este instante'
+      };
+    }
+
+    this.rooms = this.rooms.filter(r => r.id !== roomId);
+    return { success: true, message: 'Sala eliminada' };
+  }
+
+  /**
+   * Obtiene lista de salas con información pública
+   * @returns {array} Array de salas formateadas
+   */
+  getRooms() {
+    return this.rooms.map(room => ({
+      id: room.id,
+      name: room.name,
+      createdBy: room.createdBy,
+      participantCount: room.participants.length,
+      participants: room.participants.map(p => p.username),
+      createdAt: room.createdAt,
+      updated: room.updated
+    }));
+  }
+
+  /**
+   * Obtiene estadísticas del sistema (solo de salas)
+   * Nota: Para usuarios conectados, usar userManager
+   * @returns {object} Estadísticas con totalRooms y rooms
+   */
+  getStats() {
+    return {
+      totalRooms: this.rooms.length,
+      totalUsers: this.rooms.reduce((sum, r) => sum + r.participants.length, 0),
+      rooms: this.getRooms()
+    };
+  }
+
+  /**
+   * Retira un usuario de todas las salas
+   * Útil cuando el usuario se desconecta
+   * @param {string} socketId - ID del socket a remover
+   */
+  removeUserFromAll(socketId) {
+    this.rooms.forEach(room => {
+      room.participants = room.participants.filter(p => p.socketId !== socketId);
+      room.updated = new Date();
+    });
+  }
+}
+
+module.exports = new RoomManager();
+

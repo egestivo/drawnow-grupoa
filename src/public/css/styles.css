@@ -1,0 +1,502 @@
+/*
+ * ESTILOS GLOBALES - DrawNow
+ * Tema: Morado/Azul Oscuro Minimalista
+ * Paleta de colores definida en variables CSS
+ */
+
+:root {
+  --primary: #5c6bc0;
+  --secondary: #3d4a8a;
+  --dark: #1a1f3a;
+  --light-bg: #f5f7fa;
+  --border: #e0e3f0;
+}
+
+* {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: linear-gradient(135deg, #1a1f3a 0%, #2d2e5f 100%);
+  min-height: 100vh;
+}
+
+body.bg-gradient {
+  background: linear-gradient(135deg, #1a1f3a 0%, #2d2e5f 100%);
+}
+
+.screen {
+  transition: opacity 0.3s ease;
+}
+
+.min-vh-100 {
+  min-height: 100vh;
+}
+
+/* HOME SCREEN STYLES */
+.display-4 {
+  color: white;
+}
+
+.lead {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.home-buttons-section {
+  width: 100%;
+  max-width: 300px;
+}
+
+/* LOGIN CARD */
+.card-login {
+  width: 100%;
+  max-width: 400px;
+  border: none;
+  background: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+}
+
+.card-login .card-title {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 2rem;
+}
+
+/* ADMIN LOGIN PAGE */
+.admin-login-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.admin-login-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.admin-login-card {
+  border: none;
+  background: white;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 40px;
+}
+
+.admin-login-card h1 {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 1.8rem;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.admin-title {
+  color: var(--dark);
+  text-align: center;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--dark);
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+  display: block;
+}
+
+.admin-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.admin-button {
+  flex: 1;
+}
+
+.loading-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ADMIN DASHBOARD STYLES */
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: var(--primary);
+  margin: 10px 0;
+}
+
+.stat-label {
+  color: #999;
+  font-size: 0.9rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-update-time {
+  font-size: 1rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.admin-card-header {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+  border: none;
+  border-radius: 12px 12px 0 0;
+  color: white;
+  font-weight: 600;
+  padding: 20px;
+}
+
+.admin-card-body {
+  padding: 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.room-item {
+  background: white;
+  border-left: 4px solid var(--primary);
+  padding: 20px;
+  border-bottom: 1px solid #eee;
+  transition: all 0.2s ease;
+}
+
+.room-item:last-child {
+  border-bottom: none;
+}
+
+.room-item:hover {
+  background: #f9fafb;
+}
+
+.room-item h6 {
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.room-item small {
+  color: #999;
+  font-size: 0.85rem;
+}
+
+.room-users {
+  margin-top: 8px !important;
+  display: block !important;
+}
+
+.admin-badge {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: white;
+}
+
+.no-rooms-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.btn-logout:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+  color: white;
+}
+
+/* NAVBAR */
+.navbar-custom {
+  background: linear-gradient(135deg, var(--dark) 0%, var(--secondary) 100%);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(92, 107, 192, 0.2);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  font-size: 1.3rem;
+  color: white;
+}
+
+/* CARDS - GENERAL */
+.card {
+  border: none;
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border-radius: 10px;
+}
+
+.card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+
+.card-room {
+  border-top: 3px solid var(--primary);
+}
+
+.card-room .card-title {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* FORM CONTROLS */
+.form-control,
+.form-control-lg {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: white;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus,
+.form-control-lg:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 0.15rem rgba(92, 107, 192, 0.15);
+  background: white;
+  color: #333;
+}
+
+/* BUTTONS - PRIMARY */
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(92, 107, 192, 0.3);
+}
+
+/* BUTTONS - SECONDARY */
+.btn-outline-secondary {
+  color: #666;
+  border-color: var(--border);
+  border-radius: 8px;
+}
+
+.btn-outline-secondary:hover {
+  background: var(--light-bg);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* BUTTONS - WARNING */
+.btn-outline-warning {
+  color: #f59e0b;
+  border-color: #f59e0b;
+  border-radius: 8px;
+}
+
+.btn-outline-warning:hover {
+  background: #f59e0b;
+  color: white;
+}
+
+/* BUTTONS - DANGER */
+.btn-outline-danger {
+  color: #ef4444;
+  border-color: #ef4444;
+  border-radius: 8px;
+}
+
+.btn-outline-danger:hover {
+  background: #ef4444;
+  color: white;
+}
+
+/* BUTTONS - LIGHT OUTLINE */
+.btn-outline-light {
+  color: rgba(255, 255, 255, 0.8);
+  border-color: rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+}
+
+.btn-outline-light:hover {
+  border-color: white;
+  color: white;
+}
+
+.btn-sm {
+  font-size: 0.875rem;
+  padding: 0.4rem 0.8rem;
+}
+
+.btn-lg {
+  border-radius: 8px;
+  font-size: 1rem;
+  padding: 0.75rem 1.5rem;
+}
+
+/* MODAL */
+.modal-custom {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header .modal-title {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.modal-body {
+  background: white;
+}
+
+.modal-footer {
+  background: white;
+  border-top: 1px solid var(--border);
+}
+
+/* CANVAS */
+.canvas-container {
+  width: 100%;
+  height: calc(100vh - 70px);
+  background: white;
+  overflow: hidden;
+}
+
+.canvas-draw {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  background: white;
+}
+
+/* ALERTS */
+.alert {
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.alert-danger {
+  background: #fee;
+  color: #c33;
+}
+
+/* TEXT UTILITIES */
+.text-muted {
+  color: #999 !important;
+}
+
+/* SPACING UTILITIES */
+.gap-3 {
+  gap: 1rem;
+}
+
+.border-bottom-0 {
+  border-bottom: 0 !important;
+}
+
+.border-top-0 {
+  border-top: 0 !important;
+}
+
+.fw-bold {
+  font-weight: 700 !important;
+}
+
+.d-none {
+  display: none !important;
+}
+
+/* RESPONSIVE DESIGN */
+@media (max-width: 768px) {
+  .card-login {
+    max-width: 90%;
+  }
+
+  .stat-value {
+    font-size: 1.8rem;
+  }
+
+  .admin-card-body {
+    max-height: 300px;
+  }
+
+  .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .navbar-brand {
+    font-size: 1.1rem;
+  }
+
+  .row > div {
+    margin-bottom: 2rem;
+  }
+
+  .home-buttons-section {
+    max-width: 90%;
+  }
+}
+

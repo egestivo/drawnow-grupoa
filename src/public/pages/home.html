@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DrawNow - Pizarra Colaborativa</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+  <!-- HOME SCREEN -->
+  <div id="homeScreen" class="screen">
+    <div class="container-fluid d-flex align-items-center justify-content-center min-vh-100">
+      <div class="row w-100">
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+          <div class="text-center text-white">
+            <h1 class="display-4 fw-bold mb-3">DrawNow</h1>
+            <p class="lead mb-5">Dibuja en tiempo real con otros usuarios</p>
+          </div>
+        </div>
+        <div class="col-md-6 d-flex align-items-center justify-content-center">
+          <div class="d-flex flex-column gap-3 home-buttons-section">
+            <button class="btn btn-primary btn-lg" id="userAccessBtn">
+              Acceso Usuario
+            </button>
+            <button class="btn btn-outline-light btn-lg" id="adminAccessBtn">
+              Panel Administrador
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="screen d-none">
+    <div class="container-fluid d-flex align-items-center justify-content-center min-vh-100">
+      <div class="card card-login">
+        <div class="card-body">
+          <h1 class="card-title mb-4 text-center">DrawNow</h1>
+          <p class="text-muted text-center mb-4">Dibuja en tiempo real con otros usuarios</p>
+
+          <form id="loginForm">
+            <div class="mb-3">
+              <input
+                type="text"
+                id="usernameInput"
+                class="form-control form-control-lg"
+                placeholder="Tu nombre"
+                maxlength="20"
+                required
+              >
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              Continuar
+            </button>
+          </form>
+          <button class="btn btn-outline-secondary w-100 mt-3" id="backFromLoginBtn">
+            Volver
+          </button>
+          <div id="loginError" class="alert alert-danger mt-3 d-none" role="alert"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROOMS SCREEN -->
+  <div id="roomsScreen" class="screen d-none">
+    <nav class="navbar navbar-dark navbar-custom">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0">DrawNow</span>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-light" id="userDisplay"></span>
+          <button class="btn btn-outline-light btn-sm" id="logoutBtn">Salir</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container-fluid py-5">
+      <div class="row">
+        <div class="col-md-8 mx-auto">
+
+          <div id="noRoomsSection" class="text-center mb-5 d-none">
+            <h3 class="text-muted mb-4">No hay salas disponibles</h3>
+            <button class="btn btn-primary btn-lg" id="createRoomBtnMain">
+              Crear Nueva Sala
+            </button>
+          </div>
+
+          <div id="roomsListSection" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3 class="mb-0">Salas Disponibles</h3>
+              <button class="btn btn-primary btn-sm" id="createRoomBtnCorner">
+                Nueva Sala
+              </button>
+            </div>
+            <div id="roomsList" class="row g-3"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="createRoomModal" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-custom">
+          <div class="modal-header border-bottom-0">
+            <h5 class="modal-title">Crear Nueva Sala</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input
+              type="text"
+              id="roomNameInput"
+              class="form-control form-control-lg"
+              placeholder="Nombre de la sala"
+              maxlength="50"
+            >
+          </div>
+          <div class="modal-footer border-top-0">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="confirmCreateRoom">Crear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRAW SCREEN -->
+  <div id="drawScreen" class="screen d-none">
+    <nav class="navbar navbar-dark navbar-custom">
+      <div class="container-fluid">
+        <span class="navbar-brand mb-0">
+          <span id="roomNameDisplay"></span>
+        </span>
+        <div class="d-flex align-items-center gap-3">
+          <span class="text-light" id="participantsDisplay"></span>
+          <button class="btn btn-outline-warning btn-sm" id="leaveRoomBtn">Salir</button>
+          <button class="btn btn-outline-danger btn-sm" id="deleteRoomBtn">Eliminar</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="canvas-container">
+      <canvas id="canvas" class="canvas-draw"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/drawing.js"></script>
+  <script src="/js/user-flow.js"></script>
+</body>
+</html>
+
