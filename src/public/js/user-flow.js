@@ -326,6 +326,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
 });
 
 socket.on('canvas-history', (history) => {
+  clearCanvas();
   history.forEach(item => {
     if (item.__type === 'flood-fill') {
       floodFill(item.x, item.y, item.color);
