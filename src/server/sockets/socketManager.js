@@ -154,6 +154,11 @@ module.exports = (io) => {
 
       if (callback) callback({ success: true, room });
 
+      const history = canvasHistory.get(roomId) || [];
+      if (history.length > 0) {
+        socket.emit('canvas-history', history);
+      }
+
       io.to('room-' + roomId).emit('user-joined', {
         username: socket.username,
         participants: room.participants.map(p => p.username)
@@ -184,11 +189,6 @@ module.exports = (io) => {
       socket.leave('room-' + roomId);
 
       if (callback) callback({ success: true });
-
-      const history = canvasHistory.get(roomId) || [];
-      if (history.length > 0) {
-        socket.emit('canvas-history', history);
-      }
 
       io.to('room-' + roomId).emit('user-left', {
         username: socket.username,
