@@ -325,6 +325,16 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   showScreen(homeScreen);
 });
 
+socket.on('canvas-history', (history) => {
+  history.forEach(item => {
+    if (item.__type === 'flood-fill') {
+      floodFill(item.x, item.y, item.color);
+    } else {
+      renderPoint(item, null);
+    }
+  });
+});
+
 /**
  * Inicialización: Mostrar pantalla de inicio
  */

@@ -79,7 +79,7 @@ function updateFloatingCursor(user, x, y, color) {
       }
       delete activeCursors[user];
     }, 200);
-  }, 1500);
+  }, 300);
 }
 
 /**
@@ -224,6 +224,36 @@ function setupDrawing() {
     renderPoint(drawData, 'Yo');
     socket.emit('draw-data', drawData);
   });
+
+  canvas.addEventListener('mouseup', () => {
+  // Ocultar todos los cursores
+  Object.keys(activeCursors).forEach(user => {
+    const cursor = activeCursors[user];
+    if (cursor && cursor.el) {
+      cursor.el.style.opacity = '0';
+      if (cursor.timeout) clearTimeout(cursor.timeout);
+      cursor.timeout = setTimeout(() => {
+        if (cursor.el.parentNode) cursor.el.parentNode.removeChild(cursor.el);
+        delete activeCursors[user];
+      }, 200);
+    }
+  });
+});
+
+canvas.addEventListener('mouseleave', () => {
+  // Ocultar al salir del canvas
+  Object.keys(activeCursors).forEach(user => {
+    const cursor = activeCursors[user];
+    if (cursor && cursor.el) {
+      cursor.el.style.opacity = '0';
+      if (cursor.timeout) clearTimeout(cursor.timeout);
+      cursor.timeout = setTimeout(() => {
+        if (cursor.el.parentNode) cursor.el.parentNode.removeChild(cursor.el);
+        delete activeCursors[user];
+      }, 200);
+    }
+  });
+});
 
   // ---- VINCULACIÓN DE CONTROLES DE LA INTERFAZ DE HERRAMIENTAS ----
   const colorPicker = document.getElementById('colorPicker');
