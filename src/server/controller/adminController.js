@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const roomManager = require('./roomController');
+const userManager = require('./userManager');
 
 router.get('/stats', (req, res) => {
   res.json({
     timestamp: new Date(),
-    ...roomManager.getStats()
+    ...roomManager.getStats(),
+    totalConnectedUsers: userManager.getTotalUsers()
   });
 });
 

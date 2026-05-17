@@ -22,7 +22,10 @@ module.exports = (io) => {
    */
   const emitGlobalUpdates = () => {
     io.emit('rooms-list-updated', { rooms: roomManager.getRooms() });
-    io.emit('user-stats-updated', roomManager.getStats());
+    io.emit('user-stats-updated', {
+      ...roomManager.getStats(),
+      totalConnectedUsers: userManager.getTotalUsers()
+    });
     io.emit('users-online-updated', userManager.getStats());
   };
 

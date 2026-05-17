@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const roomManager = require('../controller/roomController');
+const userManager = require('../controller/userManager');
 
 /**
  * API: GET /api/stats
@@ -10,7 +11,8 @@ const roomManager = require('../controller/roomController');
 router.get('/stats', (req, res) => {
   res.json({
     timestamp: new Date(),
-    ...roomManager.getStats()
+    ...roomManager.getStats(),
+    totalConnectedUsers: userManager.getTotalUsers()
   });
 });
 
