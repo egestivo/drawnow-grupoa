@@ -12,9 +12,10 @@ class UserManager {
    * @param {string} socketId - ID único del socket
    * @param {string} username - Nombre del usuario
    */
-  addUser(socketId, username) {
+  addUser(socketId, username, color) {
     this.connectedUsers.set(socketId, {
       username,
+      color: color || '#5c6bc0',
       loginTime: new Date()
     });
   }

@@ -104,7 +104,9 @@ loginForm.addEventListener('submit', (e) => {
   socket.emit('login', { username }, (response) => {
     if (response.success) {
       currentUser = username;
+      currentUserColor = response.color || '#5c6bc0';
       userDisplay.textContent = 'Usuario: ' + username;
+      userDisplay.style.color = currentUserColor;
       usernameInput.value = '';
       socket.emit('list-rooms');
     } else {
