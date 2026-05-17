@@ -271,6 +271,25 @@ module.exports = (io) => {
     });
 
     /**
+     * Evento: clear-canvas
+     * Descripción: Limpia el lienzo de todos los participantes en la sala
+     */
+    socket.on('clear-canvas', () => {
+      if (!socket.currentRoom) return;
+      io.to('room-' + socket.currentRoom).emit('canvas-cleared');
+    });
+
+    /**
+     * Evento: flood-fill
+     * Descripción: Transmite los datos de relleno con bote de pintura a la sala
+     * Datos: { x, y, color }
+     */
+    socket.on('flood-fill', (data) => {
+      if (!socket.currentRoom) return;
+      io.to('room-' + socket.currentRoom).emit('render-flood-fill', data);
+    });
+
+    /**
      * Evento: disconnect
      * Descripción: Se ejecuta cuando un usuario se desconecta
      * Limpia datos del usuario de todas las salas

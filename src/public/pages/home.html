@@ -145,6 +145,44 @@
     <div class="canvas-container" style="position: relative;">
       <canvas id="canvas" class="canvas-draw"></canvas>
       <div id="cursors-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;"></div>
+
+      <!-- Barra de herramientas flotante -->
+      <div class="drawing-toolbar" style="position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.95); padding: 8px 16px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); z-index: 100; backdrop-filter: blur(5px); border: 1px solid rgba(0,0,0,0.08);">
+        <!-- Selector de Color -->
+        <div class="toolbar-item d-flex align-items-center gap-1">
+          <label for="colorPicker" style="font-size: 11px; font-weight: bold; margin: 0; color: #444;">Color:</label>
+          <input type="color" id="colorPicker" value="#5c6bc0" style="border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; padding: 0; background: none;">
+        </div>
+
+        <!-- Selector de Grosor -->
+        <div class="toolbar-item d-flex align-items-center gap-1">
+          <label for="brushSize" style="font-size: 11px; font-weight: bold; margin: 0; color: #444;">Grosor:</label>
+          <input type="range" id="brushSize" min="1" max="30" value="5" style="width: 80px; cursor: pointer;">
+          <span id="brushSizeVal" style="font-size: 11px; font-weight: bold; min-width: 15px; text-align: center; color: #666;">5</span>
+        </div>
+
+        <div style="width: 1px; height: 20px; background: #ddd; margin: 0 5px;"></div>
+
+        <!-- Botones de Herramientas -->
+        <div class="d-flex gap-1">
+          <!-- Pincel -->
+          <button class="btn btn-sm btn-primary tool-btn" id="toolBrush" title="Pincel" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            ✏️
+          </button>
+          <!-- Borrador -->
+          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolEraser" title="Borrador" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            🧽
+          </button>
+          <!-- Bote de Pintura -->
+          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolBucket" title="Bote de Pintura" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            🪣
+          </button>
+          <!-- Limpiar Lienzo -->
+          <button class="btn btn-sm btn-outline-danger" id="toolClear" title="Limpiar todo" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+            🗑️
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 

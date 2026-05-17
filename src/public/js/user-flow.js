@@ -107,6 +107,12 @@ loginForm.addEventListener('submit', (e) => {
       currentUserColor = response.color || '#5c6bc0';
       userDisplay.textContent = 'Usuario: ' + username;
       userDisplay.style.color = currentUserColor;
+
+      // Sincronizar colorPicker con el color único asignado por el servidor
+      const colorPicker = document.getElementById('colorPicker');
+      if (colorPicker) colorPicker.value = currentUserColor;
+      if (typeof brushColor !== 'undefined') brushColor = currentUserColor;
+
       usernameInput.value = '';
       socket.emit('list-rooms');
     } else {
@@ -281,6 +287,16 @@ document.getElementById('deleteRoomBtn').addEventListener('click', () => {
  */
 socket.on('render-draw', (data) => {
   renderPoint(data, data.user);
+});
+
+socket.on('canvas-cleared', () => {
+  clearCanvas();
+});
+
+socket.on('render-flood-fill', (data) => {
+  if (typeof floodFill === 'function') {
+    floodFill(data.x, data.y, data.color);
+  }
 });
 
 /**
