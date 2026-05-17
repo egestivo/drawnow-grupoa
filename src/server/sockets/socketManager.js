@@ -172,6 +172,8 @@ module.exports = (io) => {
 
       if (callback) callback({ success: true, room });
 
+      sendCanvasHistory(socket, roomId);
+
       io.to('room-' + roomId).emit('user-joined', {
         username: socket.username,
         participants: room.participants.map(p => p.username)
@@ -270,6 +272,8 @@ module.exports = (io) => {
       if (callback) callback(result);
       if (!result.success) return;
 
+      canvasHistory.delete(roomId);
+
       io.to('room-' + roomId).emit('room-deleted', {
         message: result.message
       });
@@ -285,11 +289,8 @@ module.exports = (io) => {
      */
     socket.on('draw-data', (data) => {
       if (!socket.currentRoom || !socket.username) return;
-      // Guardar en historial
-      if (!canvasHistory.has(socket.currentRoom)) {
-       canvasHistory.set(socket.currentRoom, []);
-      }
-      canvasHistory.get(socket.currentRoom).push({ ...data, user: socket.username });
+
+      pushToHistory(socket.currentRoom, { ...data, user: socket.username });
 
       io.to('room-' + socket.currentRoom).emit('render-draw', {
         ...data,
@@ -314,11 +315,9 @@ module.exports = (io) => {
      */
     socket.on('flood-fill', (data) => {
       if (!socket.currentRoom) return;
-    // Guardar flood-fill en historial
-    if (!canvasHistory.has(socket.currentRoom)) {
-      canvasHistory.set(socket.currentRoom, []);
-    }
-    canvasHistory.get(socket.currentRoom).push({ __type: 'flood-fill', ...data });
+
+      pushToHistory(socket.currentRoom, { __type: 'flood-fill', ...data });
+
       io.to('room-' + socket.currentRoom).emit('render-flood-fill', data);
     });
 
