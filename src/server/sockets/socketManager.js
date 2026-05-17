@@ -41,6 +41,24 @@ module.exports = (io) => {
   };
 
   const canvasHistory = new Map();
+  const MAX_HISTORY = 5000;
+
+  const pushToHistory = (roomId, entry) => {
+    if (!canvasHistory.has(roomId)) {
+      canvasHistory.set(roomId, []);
+    }
+  const history = canvasHistory.get(roomId);
+    if (history.length < MAX_HISTORY) {
+      history.push(entry);
+    }
+  };
+
+  const sendCanvasHistory = (socket, roomId) => {
+    const history = canvasHistory.get(roomId) || [];
+    if (history.length > 0) {
+      socket.emit('canvas-history', history);
+    }
+  };
 
   io.on('connection', (socket) => {
     console.log('Conexion: ' + socket.id);
@@ -153,13 +171,6 @@ module.exports = (io) => {
       socket.join('room-' + roomId);
 
       if (callback) callback({ success: true, room });
-
-      const sendCanvasHistory = (socket, roomId) => {
-        const history = canvasHistory.get(roomId) || [];
-          if (history.length > 0) {
-            socket.emit('canvas-history', history);
-          }
-      };
 
       io.to('room-' + roomId).emit('user-joined', {
         username: socket.username,
