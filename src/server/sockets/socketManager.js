@@ -154,10 +154,12 @@ module.exports = (io) => {
 
       if (callback) callback({ success: true, room });
 
-      const history = canvasHistory.get(roomId) || [];
-      if (history.length > 0) {
-        socket.emit('canvas-history', history);
-      }
+      const sendCanvasHistory = (socket, roomId) => {
+        const history = canvasHistory.get(roomId) || [];
+          if (history.length > 0) {
+            socket.emit('canvas-history', history);
+          }
+      };
 
       io.to('room-' + roomId).emit('user-joined', {
         username: socket.username,
