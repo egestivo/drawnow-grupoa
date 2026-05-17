@@ -49,7 +49,7 @@ function updateStatistics(data) {
     noRoomsMessageElement.classList.add('d-none');
     roomsDetailsElement.innerHTML = data.rooms.map(room => `
       <div class="room-item">
-        <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex justify-content-between align-items-center">
           <div>
             <h6>${room.name}</h6>
             <small>Creada por: ${room.createdBy}</small>
@@ -57,8 +57,13 @@ function updateStatistics(data) {
               <small><strong>Participantes:</strong> ${room.participants.join(', ') || 'ninguno'}</small>
             </div>
           </div>
-          <div class="admin-badge">
-            ${room.participantCount} usuario(s)
+          <div class="d-flex align-items-center gap-3">
+            <span class="admin-badge">
+              ${room.participantCount} usuario(s)
+            </span>
+            <button class="btn btn-outline-danger btn-sm" onclick="deleteRoom(${room.id})">
+              Eliminar
+            </button>
           </div>
         </div>
       </div>
@@ -102,4 +107,20 @@ adminLogoutBtn.addEventListener('click', () => {
 if (!checkAdminAuth()) {
   throw new Error('No autorizado');
 }
+
+/**
+ * Elimina una sala desde el panel de administración (solo si está vacía)
+ * @param {number} roomId - ID de la sala a eliminar
+ */
+window.deleteRoom = (roomId) => {
+  if (confirm('¿Seguro que deseas eliminar esta sala?')) {
+    socket.emit('delete-room-admin', { roomId }, (response) => {
+      if (response.success) {
+        alert(response.message || 'Sala eliminada con éxito.');
+      } else {
+        alert(response.message || 'No se pudo eliminar la sala.');
+      }
+    });
+  }
+};
 

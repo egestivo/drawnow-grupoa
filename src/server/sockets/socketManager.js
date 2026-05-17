@@ -222,6 +222,31 @@ module.exports = (io) => {
     });
 
     /**
+     * Evento: delete-room-admin
+     * Descripción: Permite al administrador eliminar una sala (solo si está vacía)
+     * Datos: { roomId: number }
+     */
+    socket.on('delete-room-admin', (data, callback) => {
+      const roomId = parseRoomId(data && data.roomId);
+      if (!roomId) {
+        sendError(callback, 'Sala no valida');
+        return;
+      }
+
+      const result = roomManager.deleteRoomByAdmin(roomId);
+
+      if (callback) callback(result);
+      if (!result.success) return;
+
+      io.to('room-' + roomId).emit('room-deleted', {
+        message: result.message
+      });
+
+      emitGlobalUpdates();
+      console.log('Sala ' + roomId + ' eliminada por Administrador');
+    });
+
+    /**
      * Evento: draw-data
      * Descripción: Transmite datos de dibujo a otros usuarios en la misma sala
      * Datos: { x, y, color }

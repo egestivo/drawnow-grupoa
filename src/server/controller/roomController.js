@@ -91,6 +91,28 @@ class RoomManager {
   }
 
   /**
+   * Elimina una sala por decisión del administrador (solo si está vacía)
+   * @param {number} roomId - ID de la sala a eliminar
+   * @returns {object} { success: boolean, message: string }
+   */
+  deleteRoomByAdmin(roomId) {
+    const room = this.rooms.find(r => r.id === roomId);
+    if (!room) {
+      return { success: false, message: 'Sala no encontrada' };
+    }
+
+    if (room.participants.length > 0) {
+      return {
+        success: false,
+        message: 'No puedes eliminar una sala con participantes activos en este instante'
+      };
+    }
+
+    this.rooms = this.rooms.filter(r => r.id !== roomId);
+    return { success: true, message: 'Sala eliminada por el administrador' };
+  }
+
+  /**
    * Obtiene lista de salas con información pública
    * @returns {array} Array de salas formateadas
    */
