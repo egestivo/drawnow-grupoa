@@ -12,6 +12,7 @@ router.get('/stats', (req, res) => {
   res.json({
     timestamp: new Date(),
     ...roomManager.getStats(),
+    rooms: roomManager.getDetailedRooms(),
     totalConnectedUsers: userManager.getTotalUsers()
   });
 });

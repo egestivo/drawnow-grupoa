@@ -13,6 +13,27 @@ class RoomManager {
   }
 
   /**
+   * Normaliza el nombre de una sala para comparaciones internas
+   * @param {string} name - Nombre de sala a normalizar
+   * @returns {string} Nombre normalizado
+   */
+  normalizeRoomName(name) {
+    return typeof name === 'string' ? name.trim().toLowerCase() : '';
+  }
+
+  /**
+   * Verifica si ya existe una sala con el mismo nombre
+   * @param {string} name - Nombre de sala a comprobar
+   * @returns {boolean} True si el nombre ya está ocupado
+   */
+  isRoomNameTaken(name) {
+    const normalized = this.normalizeRoomName(name);
+    if (!normalized) return false;
+
+    return this.rooms.some(room => this.normalizeRoomName(room.name) === normalized);
+  }
+
+  /**
    * Crea una nueva sala de dibujo
    * @param {string} name - Nombre de la sala
    * @param {string} createdBy - Nombre del usuario que la crea
@@ -126,6 +147,48 @@ class RoomManager {
       createdAt: room.createdAt,
       updated: room.updated
     }));
+  }
+
+  /**
+   * Obtiene lista de salas con información detallada para administración
+   * @returns {array} Array de salas con participantes completos
+   */
+  getDetailedRooms() {
+    return this.rooms.map(room => ({
+      id: room.id,
+      name: room.name,
+      createdBy: room.createdBy,
+      participantCount: room.participants.length,
+      participants: room.participants.map(p => ({
+        socketId: p.socketId,
+        username: p.username
+      })),
+      createdAt: room.createdAt,
+      updated: room.updated
+    }));
+  }
+
+  /**
+   * Obtiene una sala detallada por ID para administración o depuración
+   * @param {number} roomId - ID de la sala
+   * @returns {object|null} Sala detallada o null si no existe
+   */
+  getDetailedRoomById(roomId) {
+    const room = this.rooms.find(r => r.id === roomId);
+    if (!room) return null;
+
+    return {
+      id: room.id,
+      name: room.name,
+      createdBy: room.createdBy,
+      participantCount: room.participants.length,
+      participants: room.participants.map(p => ({
+        socketId: p.socketId,
+        username: p.username
+      })),
+      createdAt: room.createdAt,
+      updated: room.updated
+    };
   }
 
   /**

@@ -24,6 +24,7 @@ module.exports = (io) => {
     io.emit('rooms-list-updated', { rooms: roomManager.getRooms() });
     io.emit('user-stats-updated', {
       ...roomManager.getStats(),
+      rooms: roomManager.getDetailedRooms(),
       totalConnectedUsers: userManager.getTotalUsers()
     });
     io.emit('users-online-updated', userManager.getStats());
@@ -41,27 +42,59 @@ module.exports = (io) => {
   };
 
   const canvasHistory = new Map();
+  const canvasRedoHistory = new Map();
   const MAX_HISTORY = 5000;
 
-  const pushToHistory = (roomId, entry) => {
+  const ensureRoomHistory = (roomId) => {
     if (!canvasHistory.has(roomId)) {
       canvasHistory.set(roomId, []);
     }
-  const history = canvasHistory.get(roomId);
+    if (!canvasRedoHistory.has(roomId)) {
+      canvasRedoHistory.set(roomId, []);
+    }
+  };
+
+  const getRoomHistory = (roomId) => canvasHistory.get(roomId) || [];
+  const getRoomRedoHistory = (roomId) => canvasRedoHistory.get(roomId) || [];
+
+  const emitRoomHistoryState = (roomId) => {
+    io.to('room-' + roomId).emit('history-state-updated', {
+      roomId,
+      canUndo: getRoomHistory(roomId).length > 0,
+      canRedo: getRoomRedoHistory(roomId).length > 0
+    });
+  };
+
+  const broadcastRoomHistory = (roomId) => {
+    io.to('room-' + roomId).emit('canvas-history', getRoomHistory(roomId));
+    emitRoomHistoryState(roomId);
+  };
+
+  const pushToHistory = (roomId, entry) => {
+    ensureRoomHistory(roomId);
+    const history = canvasHistory.get(roomId);
     if (history.length < MAX_HISTORY) {
       history.push(entry);
+      canvasRedoHistory.set(roomId, []);
     }
   };
 
   const sendCanvasHistory = (socket, roomId) => {
-    const history = canvasHistory.get(roomId) || [];
+    ensureRoomHistory(roomId);
+    const history = getRoomHistory(roomId);
     if (history.length > 0) {
       socket.emit('canvas-history', history);
     }
+    socket.emit('history-state-updated', {
+      roomId,
+      canUndo: history.length > 0,
+      canRedo: getRoomRedoHistory(roomId).length > 0
+    });
   };
 
   io.on('connection', (socket) => {
     console.log('Conexion: ' + socket.id);
+    socket.kickedRooms = new Set();
 
     /**
      * Evento: login
@@ -75,6 +108,11 @@ module.exports = (io) => {
 
       if (!username) {
         sendError(callback, 'Nombre requerido');
+        return;
+      }
+
+      if (userManager.isUsernameTaken(username, socket.id)) {
+        sendError(callback, 'Ese nombre ya está en uso. Elige otro.');
         return;
       }
 
@@ -121,6 +159,12 @@ module.exports = (io) => {
       const roomName = data && typeof data.roomName === 'string'
         ? data.roomName.trim()
         : '';
+
+      if (roomName && roomManager.isRoomNameTaken(roomName)) {
+        sendError(callback, 'Ya existe una sala con ese nombre. Elige otro.');
+        return;
+      }
+
       const room = roomManager.createRoom(roomName, socket.username);
 
       if (callback) callback({ success: true, room });
@@ -142,6 +186,11 @@ module.exports = (io) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
         sendError(callback, 'Sala no valida');
+        return;
+      }
+
+      if (socket.kickedRooms && socket.kickedRooms.has(roomId)) {
+        sendError(callback, 'Has sido expulsado de esta sala y no puedes volver a entrar en esta conexión');
         return;
       }
 
@@ -169,6 +218,7 @@ module.exports = (io) => {
 
       socket.currentRoom = roomId;
       socket.join('room-' + roomId);
+      ensureRoomHistory(roomId);
 
       if (callback) callback({ success: true, room });
 
@@ -202,6 +252,9 @@ module.exports = (io) => {
       }
 
       socket.leave('room-' + roomId);
+
+      // Limpiar cualquier trazo en curso del socket
+      if (socket._currentStroke) socket._currentStroke = null;
 
       if (callback) callback({ success: true });
 
@@ -250,6 +303,7 @@ module.exports = (io) => {
       }
 
       canvasHistory.delete(roomId);
+      canvasRedoHistory.delete(roomId);
 
       emitGlobalUpdates();
       console.log('Sala ' + roomId + ' eliminada por: ' + socket.username);
@@ -273,6 +327,7 @@ module.exports = (io) => {
       if (!result.success) return;
 
       canvasHistory.delete(roomId);
+      canvasRedoHistory.delete(roomId);
 
       io.to('room-' + roomId).emit('room-deleted', {
         message: result.message
@@ -283,19 +338,159 @@ module.exports = (io) => {
     });
 
     /**
+     * Evento: logout-user
+     * Descripción: Cierra la sesión del usuario sin cerrar el socket
+     */
+    socket.on('logout-user', () => {
+      if (socket.currentRoom) {
+        const roomId = socket.currentRoom;
+        const room = roomManager.leaveRoom(roomId, socket.id);
+
+        socket.leave('room-' + roomId);
+
+        if (room) {
+          io.to('room-' + roomId).emit('user-left', {
+            username: socket.username,
+            participants: room.participants.map(p => p.username)
+          });
+        }
+      }
+
+      socket.currentRoom = null;
+      userManager.removeUser(socket.id);
+      socket.username = null;
+      socket.color = null;
+      emitGlobalUpdates();
+    });
+
+    /**
+     * Evento: kick-user-admin
+     * Descripción: Expulsa a un usuario de una sala desde el panel admin
+     * Datos: { roomId: number, socketId: string }
+     */
+    socket.on('kick-user-admin', (data, callback) => {
+      const roomId = parseRoomId(data && data.roomId);
+      const targetSocketId = data && typeof data.socketId === 'string' ? data.socketId : '';
+
+      if (!roomId) {
+        sendError(callback, 'Sala no valida');
+        return;
+      }
+
+      if (!targetSocketId) {
+        sendError(callback, 'Usuario no valido');
+        return;
+      }
+
+      const room = roomManager.leaveRoom(roomId, targetSocketId);
+      if (!room) {
+        sendError(callback, 'Sala no encontrada');
+        return;
+      }
+
+      const targetSocket = io.sockets.sockets.get(targetSocketId);
+      if (targetSocket) {
+        if (!targetSocket.kickedRooms) {
+          targetSocket.kickedRooms = new Set();
+        }
+        targetSocket.kickedRooms.add(roomId);
+        targetSocket.leave('room-' + roomId);
+        targetSocket.currentRoom = null;
+        targetSocket.emit('kicked-from-room', {
+          roomId,
+          message: 'Has sido expulsado de la sala por un administrador'
+        });
+      }
+
+      io.to('room-' + roomId).emit('user-left', {
+        username: targetSocket && targetSocket.username ? targetSocket.username : 'Usuario',
+        participants: room.participants.map(p => p.username)
+      });
+
+      if (callback) callback({ success: true, message: 'Usuario expulsado correctamente' });
+      emitGlobalUpdates();
+    });
+
+    /**
      * Evento: draw-data
      * Descripción: Transmite datos de dibujo a otros usuarios en la misma sala
      * Datos: { x, y, color }
      */
+    // Inicio de trazo: el cliente notifica cuando comienza un trazo (mousedown)
+    socket.on('draw-start', (data) => {
+      if (!socket.currentRoom || !socket.username) return;
+      // data: { strokeId, meta, point }
+      socket._currentStroke = {
+        strokeId: data && data.strokeId ? data.strokeId : null,
+        meta: data && data.meta ? data.meta : {},
+        segments: []
+      };
+      // Opcional: añadir primer punto si viene en data.point
+      if (data && data.point) {
+        const p = data.point;
+        socket._currentStroke.segments.push({
+          fromX: p.x,
+          fromY: p.y,
+          x: p.x,
+          y: p.y,
+          color: socket._currentStroke.meta.color || socket.color,
+          size: socket._currentStroke.meta.size,
+          style: socket._currentStroke.meta.style,
+          tool: socket._currentStroke.meta.tool
+        });
+      }
+    });
+
+    // Datos de trazo (segmentos) enviados mientras el usuario arrastra
     socket.on('draw-data', (data) => {
       if (!socket.currentRoom || !socket.username) return;
 
-      pushToHistory(socket.currentRoom, { ...data, user: socket.username });
-
+      // Transmitir inmediatamente el segmento a los demás para dibujo en vivo
       io.to('room-' + socket.currentRoom).emit('render-draw', {
         ...data,
         user: socket.username
       });
+
+      // Si existe un trazo en curso en este socket, agrupar el segmento
+      if (socket._currentStroke && (!data.strokeId || data.strokeId === socket._currentStroke.strokeId)) {
+        socket._currentStroke.segments.push({ ...data });
+      } else {
+        // Si no hay trazo en curso, como fallback, tratar el segmento como acción individual
+        pushToHistory(socket.currentRoom, {
+          ...data,
+          user: socket.username,
+          kind: 'stroke'
+        });
+        emitRoomHistoryState(socket.currentRoom);
+      }
+    });
+
+    // Fin de trazo: cliente notifica cuando suelta el ratón (mouseup)
+    socket.on('draw-end', (data) => {
+      if (!socket.currentRoom || !socket.username) return;
+      // Si no hay trazo en curso, nada que hacer
+      if (!socket._currentStroke) {
+        if (typeof data === 'function') return; // evitar confusión con callback
+        return;
+      }
+
+      // Construir la entrada agrupada de historial
+      const entry = {
+        __type: 'stroke',
+        stroke: {
+          strokeId: socket._currentStroke.strokeId,
+          meta: socket._currentStroke.meta,
+          segments: socket._currentStroke.segments
+        },
+        user: socket.username,
+        createdAt: new Date()
+      };
+
+      pushToHistory(socket.currentRoom, entry);
+      // Limpiar buffer del socket
+      socket._currentStroke = null;
+
+      broadcastRoomHistory(socket.currentRoom);
     });
 
     /**
@@ -304,8 +499,63 @@ module.exports = (io) => {
      */
     socket.on('clear-canvas', () => {
       if (!socket.currentRoom) return;
-      canvasHistory.set(socket.currentRoom, []);
+      pushToHistory(socket.currentRoom, {
+        __type: 'clear-canvas',
+        user: socket.username,
+        createdAt: new Date()
+      });
       io.to('room-' + socket.currentRoom).emit('canvas-cleared');
+      broadcastRoomHistory(socket.currentRoom);
+    });
+
+    /**
+     * Evento: undo-drawing
+     * Descripción: Deshace la última acción del lienzo de la sala
+     */
+    socket.on('undo-drawing', (callback) => {
+      if (!socket.currentRoom) {
+        sendError(callback, 'No estás en ninguna sala');
+        return;
+      }
+
+      const roomId = socket.currentRoom;
+      ensureRoomHistory(roomId);
+      const history = canvasHistory.get(roomId);
+      if (!history.length) {
+        sendError(callback, 'No hay acciones para deshacer');
+        return;
+      }
+
+      const removed = history.pop();
+      canvasRedoHistory.get(roomId).push(removed);
+
+      if (callback) callback({ success: true });
+      broadcastRoomHistory(roomId);
+    });
+
+    /**
+     * Evento: redo-drawing
+     * Descripción: Rehace la última acción deshecha del lienzo de la sala
+     */
+    socket.on('redo-drawing', (callback) => {
+      if (!socket.currentRoom) {
+        sendError(callback, 'No estás en ninguna sala');
+        return;
+      }
+
+      const roomId = socket.currentRoom;
+      ensureRoomHistory(roomId);
+      const redoHistory = canvasRedoHistory.get(roomId);
+      if (!redoHistory.length) {
+        sendError(callback, 'No hay acciones para rehacer');
+        return;
+      }
+
+      const restored = redoHistory.pop();
+      canvasHistory.get(roomId).push(restored);
+
+      if (callback) callback({ success: true });
+      broadcastRoomHistory(roomId);
     });
 
     /**
@@ -319,6 +569,8 @@ module.exports = (io) => {
       pushToHistory(socket.currentRoom, { __type: 'flood-fill', ...data });
 
       io.to('room-' + socket.currentRoom).emit('render-flood-fill', data);
+
+      emitRoomHistoryState(socket.currentRoom);
     });
 
     /**
@@ -341,6 +593,13 @@ module.exports = (io) => {
 
       roomManager.removeUserFromAll(socket.id);
       userManager.removeUser(socket.id);
+
+      if (socket.kickedRooms) {
+        socket.kickedRooms.clear();
+      }
+
+      // Limpiar trazo en curso si existe
+      if (socket._currentStroke) socket._currentStroke = null;
 
       emitGlobalUpdates();
     });
