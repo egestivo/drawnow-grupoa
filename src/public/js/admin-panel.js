@@ -49,12 +49,12 @@ function updateStatistics(data) {
     noRoomsMessageElement.classList.add('d-none');
     roomsDetailsElement.innerHTML = data.rooms.map(room => `
       <div class="room-item">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
           <div>
             <h6>${room.name}</h6>
             <small>Creada por: ${room.createdBy}</small>
             <div class="room-users">
-              <small><strong>Participantes:</strong> ${room.participants.join(', ') || 'ninguno'}</small>
+              ${renderParticipants(room)}
             </div>
           </div>
           <div class="d-flex align-items-center gap-3">
@@ -69,6 +69,36 @@ function updateStatistics(data) {
       </div>
     `).join('');
   }
+}
+
+/**
+ * Renderiza la lista de participantes de una sala para el panel admin
+ * @param {object} room - Sala con participantes detallados
+ * @returns {string} HTML de participantes
+ */
+function renderParticipants(room) {
+  const participants = Array.isArray(room.participants) ? room.participants : [];
+
+  if (participants.length === 0) {
+    return '<small><strong>Participantes:</strong> ninguno</small>';
+  }
+
+  return `
+    <div class="participants-list">
+      <small class="participants-title"><strong>Participantes:</strong></small>
+      ${participants.map(participant => {
+        const username = participant.username || String(participant);
+        const socketId = participant.socketId || '';
+
+        return `
+          <div class="participant-item">
+            <span class="participant-name">${username}</span>
+            ${socketId ? `<button class="btn btn-outline-warning btn-sm" onclick="kickUser(${room.id}, '${socketId}')">Sacar</button>` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
 }
 
 /**
@@ -119,6 +149,23 @@ window.deleteRoom = (roomId) => {
         alert(response.message || 'Sala eliminada con éxito.');
       } else {
         alert(response.message || 'No se pudo eliminar la sala.');
+      }
+    });
+  }
+};
+
+/**
+ * Expulsa a un usuario de una sala desde el panel admin
+ * @param {number} roomId - ID de la sala
+ * @param {string} socketId - Socket del usuario
+ */
+window.kickUser = (roomId, socketId) => {
+  if (confirm('¿Quieres sacar a este usuario de la sala?')) {
+    socket.emit('kick-user-admin', { roomId, socketId }, (response) => {
+      if (response.success) {
+        alert(response.message || 'Usuario expulsado correctamente.');
+      } else {
+        alert(response.message || 'No se pudo expulsar al usuario.');
       }
     });
   }

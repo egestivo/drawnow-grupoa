@@ -8,6 +8,15 @@ class UserManager {
   }
 
   /**
+   * Normaliza un nombre para comparaciones internas
+   * @param {string} username - Nombre a normalizar
+   * @returns {string} Nombre normalizado
+   */
+  normalizeUsername(username) {
+    return typeof username === 'string' ? username.trim().toLowerCase() : '';
+  }
+
+  /**
    * Registra un usuario cuando se loguea
    * @param {string} socketId - ID único del socket
    * @param {string} username - Nombre del usuario
@@ -15,6 +24,7 @@ class UserManager {
   addUser(socketId, username, color) {
     this.connectedUsers.set(socketId, {
       username,
+      normalizedUsername: this.normalizeUsername(username),
       color: color || '#5c6bc0',
       loginTime: new Date()
     });
@@ -26,6 +36,24 @@ class UserManager {
    */
   removeUser(socketId) {
     this.connectedUsers.delete(socketId);
+  }
+
+  /**
+   * Verifica si un nombre ya está en uso por otra conexión activa
+   * @param {string} username - Nombre a comprobar
+   * @param {string} [excludeSocketId] - Socket a ignorar en la comparación
+   * @returns {boolean} True si ya existe otro usuario con ese nombre
+   */
+  isUsernameTaken(username, excludeSocketId = null) {
+    const normalized = this.normalizeUsername(username);
+    if (!normalized) return false;
+
+    for (const [socketId, user] of this.connectedUsers.entries()) {
+      if (excludeSocketId && socketId === excludeSocketId) continue;
+      if (user.normalizedUsername === normalized) return true;
+    }
+
+    return false;
   }
 
   /**
@@ -42,6 +70,24 @@ class UserManager {
    */
   getAllUsers() {
     return Array.from(this.connectedUsers.values()).map(u => u.username);
+  }
+
+  /**
+   * Obtiene el usuario completo a partir del nombre
+   * @param {string} username - Nombre a buscar
+   * @returns {object|null} Usuario encontrado o null
+   */
+  getUserByUsername(username) {
+    const normalized = this.normalizeUsername(username);
+    if (!normalized) return null;
+
+    for (const user of this.connectedUsers.values()) {
+      if (user.normalizedUsername === normalized) {
+        return user;
+      }
+    }
+
+    return null;
   }
 
   /**

@@ -15,6 +15,11 @@ let currentUserColor = '#5c6bc0'; // Color único de pincel del usuario, asignad
 // Variables de configuración de herramientas de dibujo
 let currentTool = 'brush'; // 'brush', 'eraser', 'bucket'
 let brushSize = 5;
+let strokeStyle = 'solid'; // 'solid', 'dashed', 'dotted'
+  let isDrawing = false;
+  let lastPoint = null;
+  // Identificador del trazo actual (agrupa múltiples segmentos en una acción)
+  let currentStrokeId = null;
 window.brushColor = '#5c6bc0'; // Exponerlo globalmente para sincronización
 
 /**
@@ -90,10 +95,14 @@ function updateFloatingCursor(user, x, y, color) {
 function renderPoint(data, label) {
   if (!ctx) return;
 
-  ctx.fillStyle = data.color;
-  ctx.beginPath();
-  ctx.arc(data.x, data.y, data.size || 5, 0, Math.PI * 2);
-  ctx.fill();
+  if (data && Number.isFinite(data.fromX) && Number.isFinite(data.fromY)) {
+    drawStrokeSegment(data);
+  } else {
+    ctx.fillStyle = data.color;
+    ctx.beginPath();
+    ctx.arc(data.x, data.y, data.size || 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Actualizar el cursor dinámico flotante si el trazo es de otro usuario
   if (label && label !== 'Yo') {
@@ -176,6 +185,101 @@ function hexToRgb(hex) {
  */
 function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.setLineDash([]);
+}
+
+/**
+ * Reproduce el historial completo del canvas para reconstruir el lienzo
+ * @param {array} history - Lista de acciones a pintar de nuevo
+ */
+function renderCanvasHistory(history) {
+  clearCanvas();
+
+  if (!Array.isArray(history)) return;
+
+  history.forEach((item) => {
+    if (!item) return;
+    if (item.__type === 'clear-canvas') {
+      clearCanvas();
+      return;
+    }
+
+    if (item.__type === 'flood-fill') {
+      floodFill(item.x, item.y, item.color);
+      return;
+    }
+
+    // Nuevo: soporte para acciones agrupadas de trazo
+    if (item.__type === 'stroke' && item.stroke && Array.isArray(item.stroke.segments)) {
+      // Dibujar cada segmento del trazo en orden
+      item.stroke.segments.forEach(seg => {
+        drawStrokeSegment(seg);
+      });
+      return;
+    }
+
+    renderPoint(item, null);
+  });
+}
+
+/**
+ * Habilita o deshabilita los botones de deshacer y rehacer
+ * @param {object} state - Estado con canUndo y canRedo
+ */
+function updateHistoryControls(state) {
+  const toolUndo = document.getElementById('toolUndo');
+  const toolRedo = document.getElementById('toolRedo');
+
+  if (toolUndo) toolUndo.disabled = !state || !state.canUndo;
+  if (toolRedo) toolRedo.disabled = !state || !state.canRedo;
+}
+
+/**
+ * Devuelve el patrón de trazo según el estilo actual
+ * @param {string} style - solid, dashed o dotted
+ * @param {number} size - Grosor del pincel
+ * @returns {number[]} Patrón para setLineDash
+ */
+function getLineDashPattern(style, size) {
+  if (style === 'dashed') return [size * 3, size * 2];
+  if (style === 'dotted') return [1, size * 2];
+  return [];
+}
+
+/**
+ * Dibuja un segmento de línea en el canvas
+ * @param {object} data - Datos del segmento
+ */
+function drawStrokeSegment(data) {
+  if (!ctx) return;
+
+  const fromX = Number.isFinite(data.fromX) ? data.fromX : data.x;
+  const fromY = Number.isFinite(data.fromY) ? data.fromY : data.y;
+  const toX = Number.isFinite(data.x) ? data.x : fromX;
+  const toY = Number.isFinite(data.y) ? data.y : fromY;
+  const lineWidth = data.size || brushSize;
+
+  ctx.save();
+  ctx.strokeStyle = data.color || window.brushColor;
+  ctx.lineWidth = lineWidth;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.setLineDash(getLineDashPattern(data.style || strokeStyle, lineWidth));
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Exporta el canvas actual como JPG
+ */
+function exportCanvasAsImage() {
+  const link = document.createElement('a');
+  link.download = 'drawnow-pizarra.jpg';
+  link.href = canvas.toDataURL('image/jpeg', 0.92);
+  link.click();
 }
 
 /**
@@ -196,12 +300,33 @@ function setupDrawing() {
       floodFill(x, y, window.brushColor);
       socket.emit('flood-fill', { x, y, color: window.brushColor });
     } else {
+      // Iniciar un nuevo trazo agrupado
+      isDrawing = true;
+      lastPoint = { x, y };
+      currentStrokeId = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+
+      const meta = {
+        strokeId: currentStrokeId,
+        color: currentTool === 'eraser' ? '#ffffff' : window.brushColor,
+        size: brushSize,
+        style: strokeStyle,
+        tool: currentTool
+      };
+
       const drawData = {
+        strokeId: currentStrokeId,
+        fromX: x,
+        fromY: y,
         x,
         y,
-        color: currentTool === 'eraser' ? '#ffffff' : window.brushColor,
-        size: brushSize
+        color: meta.color,
+        size: meta.size,
+        style: meta.style,
+        tool: meta.tool
       };
+
+      // Notificar inicio de trazo al servidor para que agrupe la acción
+      socket.emit('draw-start', { strokeId: currentStrokeId, meta, point: { x, y } });
       renderPoint(drawData, 'Yo');
       socket.emit('draw-data', drawData);
     }
@@ -209,38 +334,59 @@ function setupDrawing() {
 
   // Evento Mousemove para arrastrar el trazo continuo
   canvas.addEventListener('mousemove', (e) => {
-    if (e.buttons !== 1) return;
+    if (e.buttons !== 1 || !isDrawing) return;
     if (currentTool === 'bucket') return;
     if (typeof currentRoomId === 'undefined' || !currentRoomId) return;
 
     const rect = canvas.getBoundingClientRect();
     const drawData = {
+      strokeId: currentStrokeId,
+      fromX: lastPoint ? lastPoint.x : Math.round(e.clientX - rect.left),
+      fromY: lastPoint ? lastPoint.y : Math.round(e.clientY - rect.top),
       x: Math.round(e.clientX - rect.left),
       y: Math.round(e.clientY - rect.top),
       color: currentTool === 'eraser' ? '#ffffff' : window.brushColor,
-      size: brushSize
+      size: brushSize,
+      style: strokeStyle,
+      tool: currentTool
     };
 
     renderPoint(drawData, 'Yo');
     socket.emit('draw-data', drawData);
+    lastPoint = { x: drawData.x, y: drawData.y };
   });
 
   canvas.addEventListener('mouseup', () => {
-  // Ocultar todos los cursores
-  Object.keys(activeCursors).forEach(user => {
-    const cursor = activeCursors[user];
-    if (cursor && cursor.el) {
-      cursor.el.style.opacity = '0';
-      if (cursor.timeout) clearTimeout(cursor.timeout);
-      cursor.timeout = setTimeout(() => {
-        if (cursor.el.parentNode) cursor.el.parentNode.removeChild(cursor.el);
-        delete activeCursors[user];
-      }, 200);
+    isDrawing = false;
+    lastPoint = null;
+
+    // Finalizar trazo agrupado y notificar al servidor
+    if (currentStrokeId) {
+      socket.emit('draw-end', { strokeId: currentStrokeId });
+      currentStrokeId = null;
     }
+
+    // Ocultar todos los cursores
+    Object.keys(activeCursors).forEach(user => {
+      const cursor = activeCursors[user];
+      if (cursor && cursor.el) {
+        cursor.el.style.opacity = '0';
+        if (cursor.timeout) clearTimeout(cursor.timeout);
+        cursor.timeout = setTimeout(() => {
+          if (cursor.el.parentNode) cursor.el.parentNode.removeChild(cursor.el);
+          delete activeCursors[user];
+        }, 200);
+      }
+    });
   });
-});
 
 canvas.addEventListener('mouseleave', () => {
+  isDrawing = false;
+  lastPoint = null;
+  if (currentStrokeId) {
+    socket.emit('draw-end', { strokeId: currentStrokeId });
+    currentStrokeId = null;
+  }
   // Ocultar al salir del canvas
   Object.keys(activeCursors).forEach(user => {
     const cursor = activeCursors[user];
@@ -259,10 +405,14 @@ canvas.addEventListener('mouseleave', () => {
   const colorPicker = document.getElementById('colorPicker');
   const brushSizeInput = document.getElementById('brushSize');
   const brushSizeVal = document.getElementById('brushSizeVal');
+  const strokeStyleSelect = document.getElementById('strokeStyle');
   const toolBrush = document.getElementById('toolBrush');
   const toolEraser = document.getElementById('toolEraser');
   const toolBucket = document.getElementById('toolBucket');
   const toolClear = document.getElementById('toolClear');
+  const toolExport = document.getElementById('toolExport');
+  const toolUndo = document.getElementById('toolUndo');
+  const toolRedo = document.getElementById('toolRedo');
 
   // Escuchar cambios de color
   if (colorPicker) {
@@ -279,6 +429,12 @@ canvas.addEventListener('mouseleave', () => {
     brushSizeInput.addEventListener('input', (e) => {
       brushSize = parseInt(e.target.value);
       if (brushSizeVal) brushSizeVal.textContent = brushSize;
+    });
+  }
+
+  if (strokeStyleSelect) {
+    strokeStyleSelect.addEventListener('change', (e) => {
+      strokeStyle = e.target.value;
     });
   }
 
@@ -303,6 +459,32 @@ canvas.addEventListener('mouseleave', () => {
       }
     });
   }
+
+  if (toolExport) {
+    toolExport.addEventListener('click', exportCanvasAsImage);
+  }
+
+  if (toolUndo) {
+    toolUndo.addEventListener('click', () => {
+      socket.emit('undo-drawing', (response) => {
+        if (!response || !response.success) {
+          alert((response && response.message) || 'No se pudo deshacer la acción');
+        }
+      });
+    });
+  }
+
+  if (toolRedo) {
+    toolRedo.addEventListener('click', () => {
+      socket.emit('redo-drawing', (response) => {
+        if (!response || !response.success) {
+          alert((response && response.message) || 'No se pudo rehacer la acción');
+        }
+      });
+    });
+  }
+
+  updateHistoryControls(null);
 }
 
 /**

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>DrawNow - Pizarra Colaborativa</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
@@ -21,12 +22,8 @@
         </div>
         <div class="col-md-6 d-flex align-items-center justify-content-center">
           <div class="d-flex flex-column gap-3 home-buttons-section">
-            <button class="btn btn-primary btn-lg" id="userAccessBtn">
-              Acceso Usuario
-            </button>
-            <button class="btn btn-outline-light btn-lg" id="adminAccessBtn">
-              Panel Administrador
-            </button>
+            <button class="btn btn-primary btn-lg" id="userAccessBtn">Acceso Usuario</button>
+            <button class="btn btn-outline-light btn-lg" id="adminAccessBtn">Panel Administrador</button>
           </div>
         </div>
       </div>
@@ -52,13 +49,10 @@
                 required
               >
             </div>
-            <button type="submit" class="btn btn-primary btn-lg w-100">
-              Continuar
-            </button>
+            <button type="submit" class="btn btn-primary btn-lg w-100">Continuar</button>
           </form>
-          <button class="btn btn-outline-secondary w-100 mt-3" id="backFromLoginBtn">
-            Volver
-          </button>
+
+          <button class="btn btn-outline-secondary w-100 mt-3" id="backFromLoginBtn">Volver</button>
           <div id="loginError" class="alert alert-danger mt-3 d-none" role="alert"></div>
         </div>
       </div>
@@ -80,24 +74,18 @@
     <div class="container-fluid py-5">
       <div class="row">
         <div class="col-md-8 mx-auto">
-
           <div id="noRoomsSection" class="text-center mb-5 d-none">
             <h3 class="text-muted mb-4">No hay salas disponibles</h3>
-            <button class="btn btn-primary btn-lg" id="createRoomBtnMain">
-              Crear Nueva Sala
-            </button>
+            <button class="btn btn-primary btn-lg" id="createRoomBtnMain">Crear Nueva Sala</button>
           </div>
 
           <div id="roomsListSection" class="d-none">
             <div class="d-flex justify-content-between align-items-center mb-4">
               <h3 class="mb-0">Salas Disponibles</h3>
-              <button class="btn btn-primary btn-sm" id="createRoomBtnCorner">
-                Nueva Sala
-              </button>
+              <button class="btn btn-primary btn-sm" id="createRoomBtnCorner">Nueva Sala</button>
             </div>
             <div id="roomsList" class="row g-3"></div>
           </div>
-
         </div>
       </div>
     </div>
@@ -131,9 +119,7 @@
   <div id="drawScreen" class="screen d-none">
     <nav class="navbar navbar-dark navbar-custom">
       <div class="container-fluid">
-        <span class="navbar-brand mb-0">
-          <span id="roomNameDisplay"></span>
-        </span>
+        <span class="navbar-brand mb-0"><span id="roomNameDisplay"></span></span>
         <div class="d-flex align-items-center gap-3">
           <span class="text-light" id="participantsDisplay"></span>
           <button class="btn btn-outline-warning btn-sm" id="leaveRoomBtn">Salir</button>
@@ -142,46 +128,59 @@
       </div>
     </nav>
 
-    <div class="canvas-container" style="position: relative;">
+    <div class="canvas-container">
       <canvas id="canvas" class="canvas-draw"></canvas>
-      <div id="cursors-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; overflow: hidden;"></div>
+      <div id="cursors-layer" class="cursors-layer"></div>
 
-      <!-- Barra de herramientas flotante -->
-      <div class="drawing-toolbar" style="position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.95); padding: 8px 16px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15); z-index: 100; backdrop-filter: blur(5px); border: 1px solid rgba(0,0,0,0.08);">
-        <!-- Selector de Color -->
+      <div class="drawing-toolbar">
         <div class="toolbar-item d-flex align-items-center gap-1">
-          <label for="colorPicker" style="font-size: 11px; font-weight: bold; margin: 0; color: #444;">Color:</label>
-          <input type="color" id="colorPicker" value="#5c6bc0" style="border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; padding: 0; background: none;">
+          <label for="colorPicker" class="toolbar-label">Color</label>
+          <input type="color" id="colorPicker" value="#5c6bc0" class="toolbar-color-picker">
         </div>
 
-        <!-- Selector de Grosor -->
         <div class="toolbar-item d-flex align-items-center gap-1">
-          <label for="brushSize" style="font-size: 11px; font-weight: bold; margin: 0; color: #444;">Grosor:</label>
-          <input type="range" id="brushSize" min="1" max="30" value="5" style="width: 80px; cursor: pointer;">
-          <span id="brushSizeVal" style="font-size: 11px; font-weight: bold; min-width: 15px; text-align: center; color: #666;">5</span>
+          <label for="brushSize" class="toolbar-label">Grosor</label>
+          <input type="range" id="brushSize" min="1" max="30" value="5" class="toolbar-range">
+          <span id="brushSizeVal" class="toolbar-value">5</span>
         </div>
 
-        <div style="width: 1px; height: 20px; background: #ddd; margin: 0 5px;"></div>
+        <div class="toolbar-item d-flex align-items-center gap-1">
+          <label for="strokeStyle" class="toolbar-label">Trazo</label>
+          <select id="strokeStyle" class="form-select form-select-sm toolbar-select">
+            <option value="solid">Continuo</option>
+            <option value="dashed">Dashed</option>
+            <option value="dotted">Dotted</option>
+          </select>
+        </div>
 
-        <!-- Botones de Herramientas -->
-        <div class="d-flex gap-1">
-          <!-- Pincel -->
-          <button class="btn btn-sm btn-primary tool-btn" id="toolBrush" title="Pincel" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            ✏️
+        <div class="toolbar-divider"></div>
+
+        <div class="toolbar-actions d-flex gap-1 flex-wrap">
+          <button class="btn btn-sm btn-primary tool-btn" id="toolBrush" title="Pincel">
+            <i class="bi bi-pencil-fill"></i><span>Pincel</span>
           </button>
-          <!-- Borrador -->
-          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolEraser" title="Borrador" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            🧽
+          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolEraser" title="Borrador">
+            <i class="bi bi-eraser-fill"></i><span>Borrar</span>
           </button>
-          <!-- Bote de Pintura -->
-          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolBucket" title="Bote de Pintura" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            🪣
+          <button class="btn btn-sm btn-outline-secondary tool-btn" id="toolBucket" title="Bote de Pintura">
+            <i class="bi bi-droplet-fill"></i><span>Relleno</span>
           </button>
-          <!-- Limpiar Lienzo -->
-          <button class="btn btn-sm btn-outline-danger" id="toolClear" title="Limpiar todo" style="border-radius: 50%; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
-            🗑️
+          <button class="btn btn-sm btn-outline-danger tool-btn" id="toolClear" title="Limpiar todo">
+            <i class="bi bi-trash3-fill"></i><span>Limpiar</span>
+          </button>
+          <button class="btn btn-sm btn-outline-primary tool-btn" id="toolExport" title="Exportar JPG">
+            <i class="bi bi-download"></i><span>Exportar</span>
           </button>
         </div>
+      </div>
+
+      <div class="history-controls">
+        <button class="btn btn-light history-btn" id="toolUndo" title="Deshacer">
+          <i class="bi bi-arrow-counterclockwise"></i>
+        </button>
+        <button class="btn btn-light history-btn" id="toolRedo" title="Rehacer">
+          <i class="bi bi-arrow-clockwise"></i>
+        </button>
       </div>
     </div>
   </div>

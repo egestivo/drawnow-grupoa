@@ -104,14 +104,14 @@ loginForm.addEventListener('submit', (e) => {
   socket.emit('login', { username }, (response) => {
     if (response.success) {
       currentUser = username;
-      currentUserColor = response.color || '#5c6bc0';
+          window.currentUserColor = response.color || '#5c6bc0';
       userDisplay.textContent = 'Usuario: ' + username;
-      userDisplay.style.color = currentUserColor;
+          userDisplay.style.color = window.currentUserColor;
 
       // Sincronizar colorPicker con el color único asignado por el servidor
       const colorPicker = document.getElementById('colorPicker');
-      if (colorPicker) colorPicker.value = currentUserColor;
-      if (typeof brushColor !== 'undefined') brushColor = currentUserColor;
+          if (colorPicker) colorPicker.value = window.currentUserColor;
+          if (typeof brushColor !== 'undefined') brushColor = window.currentUserColor;
 
       usernameInput.value = '';
       socket.emit('list-rooms');
@@ -168,7 +168,8 @@ function updateRoomsList() {
 }
 
 // Modal de crear sala
-const createRoomModal = new bootstrap.Modal('#createRoomModal');
+const createRoomModalElement = document.getElementById('createRoomModal');
+const createRoomModal = new bootstrap.Modal(createRoomModalElement);
 
 /**
  * Abre el modal para crear una nueva sala
@@ -254,6 +255,7 @@ document.getElementById('leaveRoomBtn').addEventListener('click', () => {
       currentRoomId = null;
       currentRoom = null;
       clearCanvas();
+      if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
       socket.emit('list-rooms');
     } else {
       alert((response && response.message) || 'No se pudo salir de la sala');
@@ -273,6 +275,7 @@ document.getElementById('deleteRoomBtn').addEventListener('click', () => {
         currentRoomId = null;
         currentRoom = null;
         clearCanvas();
+        if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
         socket.emit('list-rooms');
       } else {
         alert((response && response.message) || 'No se pudo eliminar la sala');
@@ -309,8 +312,23 @@ socket.on('room-deleted', () => {
     currentRoomId = null;
     currentRoom = null;
     clearCanvas();
+    if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
     socket.emit('list-rooms');
   }
+});
+
+/**
+ * EVENT SOCKET: kicked-from-room
+ * Se ejecuta cuando un administrador expulsa al usuario de una sala
+ */
+socket.on('kicked-from-room', (data) => {
+  currentRoomId = null;
+  currentRoom = null;
+  clearCanvas();
+  if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
+  alert(data && data.message ? data.message : 'Has sido expulsado de la sala');
+  socket.emit('list-rooms');
+  showScreen(roomsScreen);
 });
 
 /**
@@ -318,22 +336,21 @@ socket.on('room-deleted', () => {
  * Cierra la sesión del usuario y retorna al inicio
  */
 document.getElementById('logoutBtn').addEventListener('click', () => {
+  socket.emit('logout-user');
   currentUser = null;
   currentRoomId = null;
   currentRoom = null;
   clearCanvas();
+  if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
   showScreen(homeScreen);
 });
 
 socket.on('canvas-history', (history) => {
-  clearCanvas();
-  history.forEach(item => {
-    if (item.__type === 'flood-fill') {
-      floodFill(item.x, item.y, item.color);
-    } else {
-      renderPoint(item, null);
-    }
-  });
+  renderCanvasHistory(history);
+});
+
+socket.on('history-state-updated', (state) => {
+  if (typeof updateHistoryControls === 'function') updateHistoryControls(state);
 });
 
 /**
