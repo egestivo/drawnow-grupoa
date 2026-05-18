@@ -9,39 +9,27 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-/**
- * MIDDLEWARE
- */
+
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 
-/**
- * RUTAS - Páginas
- */
+
 const pageRoutes = require('./routes/pages');
 app.use(pageRoutes);
 
-/**
- * RUTAS - API
- */
+
 const apiRoutes = require('./routes/api');
 app.use('/api', apiRoutes);
 
-/**
- * WEBSOCKETS
- */
+
 const socketManager = require('./sockets/socketManager');
 socketManager(io);
 
-/**
- * SERVIDOR TCP (para dibujadores IoT)
- */
+
 const createTcpServer = require('./tcp/tcpServer');
 const tcpServer = createTcpServer(io);
 
-/**
- * INICIAR SERVIDORES
- */
+
 const PORT = process.env.PORT || 3000;
 const TCP_PORT = process.env.TCP_PORT || 4000;
 
