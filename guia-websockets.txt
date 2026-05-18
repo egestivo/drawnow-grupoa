@@ -1,0 +1,40 @@
+GUIA DE EXPOSICION: CREACION Y USO DE WEBSOCKETS (ULTRA-RESUMIDA)
+
+Nuestro programa utiliza WebSockets para lograr la pizarra colaborativa en tiempo real. La comunicacion se divide en el extremo del Servidor y el extremo del Cliente.
+
+1. CREACION DE WEBSOCKETS
+
+- En el Servidor (Archivo: src/server/index.js)
+  [Linea 4]
+  const { Server } = require('socket.io');
+
+  [Lineas 8 a 10]
+  const io = new Server(server, { cors: { origin: '*' } });
+
+  [Lineas 25 a 26]
+  const socketManager = require('./sockets/socketManager');
+  socketManager(io);
+
+- En el Cliente (Archivo: src/public/js/user-flow.js)
+  [Linea 12]
+  const socket = io();
+
+
+2. EL CORAZON DE LA COMUNICACION: GESTION DE EVENTOS (Archivo: src/server/sockets/socketManager.js)
+
+* [Lineas 81 a 84] Conexión Inicial: Aquí se observa cuando el cliente se conecta de forma física por red y el servidor le abre paso a los eventos.
+* [Lineas 85 a 116] Registro de Usuario (Login): Aquí se observa cuando el cliente envía su apodo para asignarle su sesión y un color único de pincel.
+* [Lineas 149 a 203] Ingreso a Sala (Join Room): Aquí se observa al cliente uniéndose al canal de la sala y recibiendo el historial del lienzo para sincronizarse al instante.
+* [Lineas 365 a 436] Flujo de Dibujo Transaccional: Aquí se observa cómo se agrupan las coordenadas en un trazo estructurado (inicio, datos y fin) para evitar saturar la red.
+* [Lineas 451 a 492] Historial Colaborativo (Deshacer / Rehacer): Aquí se observa la lógica de deshacer y rehacer trazos colaborativos intercambiando pilas del historial de la sala en milisegundos.
+* [Lineas 506 a 531] Desconexión: Aquí se observa cuando un usuario cierra la pestaña. El servidor remueve su rastro de las salas activas y notifica al grupo sin interferir con los demás.
+
+
+3. GUION PARA LA EXPLICACION (TEXTO SUGERIDO ULTRA-RESUMIDO)
+
+"En el archivo socketManager.js aquí se observa la gestión de eventos en tiempo real:
+
+* Líneas 81 a 116: Aquí se observa la conexión de red inicial y el login de usuario para asignarle su apodo y su color de pincel.
+* Líneas 149 a 203: Aquí se observa el ingreso a una sala, donde el servidor le envía todo el historial previo del lienzo para que se dibuje idéntico en su pantalla.
+* Líneas 365 a 436: Aquí se observa la transmisión de dibujo agrupada por trazos (inicio, datos y fin), lo que optimiza la red y nos permite implementar en las líneas 451 a 492 la funcionalidad de deshacer y rehacer colaborativo.
+* Líneas 506 a 531: Finalmente, aquí se observa cómo se remueve de forma segura el usuario en caso de desconexión sin interrumpir al resto."

@@ -1,25 +1,15 @@
 const roomManager = require('../controller/roomController');
 const userManager = require('../controller/userManager');
 
-/**
- * Gestor de WebSockets
- * Maneja todas las conexiones en tiempo real de los clientes
- */
+
 module.exports = (io) => {
-  /**
-   * Convierte un valor a número entero válido para roomId
-   * @param {any} value - Valor a convertir
-   * @returns {number|null} RoomId válido o null
-   */
+
   const parseRoomId = (value) => {
     const roomId = Number.parseInt(value, 10);
     return Number.isNaN(roomId) ? null : roomId;
   };
 
-  /**
-   * Emite actualizaciones globales a todos los clientes
-   * Incluye lista de salas y estadísticas de usuarios
-   */
+
   const emitGlobalUpdates = () => {
     io.emit('rooms-list-updated', { rooms: roomManager.getRooms() });
     io.emit('user-stats-updated', {
@@ -30,11 +20,7 @@ module.exports = (io) => {
     io.emit('users-online-updated', userManager.getStats());
   };
 
-  /**
-   * Envía un error en formato estándar a través del callback
-   * @param {function} callback - Callback del socket
-   * @param {string} message - Mensaje de error
-   */
+
   const sendError = (callback, message) => {
     if (callback) {
       callback({ success: false, message });
@@ -96,11 +82,6 @@ module.exports = (io) => {
     console.log('Conexion: ' + socket.id);
     socket.kickedRooms = new Set();
 
-    /**
-     * Evento: login
-     * Descripción: Se ejecuta cuando un usuario ingresa con su nombre
-     * Datos: { username: string }
-     */
     socket.on('login', (data, callback) => {
       const username = data && typeof data.username === 'string'
         ? data.username.trim()
@@ -118,10 +99,9 @@ module.exports = (io) => {
 
       socket.username = username;
 
-      // Paleta de hermosos colores pasteles y vivos para identificar a cada usuario dibujando
       const colors = [
-        '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', 
-        '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', 
+        '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb',
+        '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784',
         '#aed581', '#ffb74d', '#ff8a65'
       ];
       const userColor = colors[Math.floor(Math.random() * colors.length)];
@@ -135,21 +115,14 @@ module.exports = (io) => {
       emitGlobalUpdates();
     });
 
-    /**
-     * Evento: list-rooms
-     * Descripción: Solicita la lista actualizada de salas disponibles
-     */
+
     socket.on('list-rooms', (data, callback) => {
       const rooms = roomManager.getRooms();
       if (callback) callback({ success: true, rooms });
       socket.emit('rooms-list-updated', { rooms });
     });
 
-    /**
-     * Evento: create-room
-     * Descripción: Crea una nueva sala de dibujo
-     * Datos: { roomName: string }
-     */
+
     socket.on('create-room', (data, callback) => {
       if (!socket.username) {
         sendError(callback, 'Usuario no identificado');
@@ -172,11 +145,7 @@ module.exports = (io) => {
       console.log('Sala creada: ' + room.name + ' por: ' + socket.username);
     });
 
-    /**
-     * Evento: join-room
-     * Descripción: Usuario ingresa a una sala existente
-     * Datos: { roomId: number }
-     */
+
     socket.on('join-room', (data, callback) => {
       if (!socket.username) {
         sendError(callback, 'Usuario no identificado');
@@ -233,11 +202,7 @@ module.exports = (io) => {
       console.log('Unio: ' + socket.username + ' a sala ' + roomId);
     });
 
-    /**
-     * Evento: leave-room
-     * Descripción: Usuario sale de una sala
-     * Datos: { roomId: number }
-     */
+
     socket.on('leave-room', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
@@ -271,11 +236,7 @@ module.exports = (io) => {
       }
     });
 
-    /**
-     * Evento: delete-room
-     * Descripción: Elimina una sala (solo si no hay participantes activos)
-     * Datos: { roomId: number }
-     */
+
     socket.on('delete-room', (data, callback) => {
       if (!socket.username) {
         sendError(callback, 'Usuario no identificado');
@@ -309,11 +270,7 @@ module.exports = (io) => {
       console.log('Sala ' + roomId + ' eliminada por: ' + socket.username);
     });
 
-    /**
-     * Evento: delete-room-admin
-     * Descripción: Permite al administrador eliminar una sala (solo si está vacía)
-     * Datos: { roomId: number }
-     */
+
     socket.on('delete-room-admin', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
@@ -337,10 +294,7 @@ module.exports = (io) => {
       console.log('Sala ' + roomId + ' eliminada por Administrador');
     });
 
-    /**
-     * Evento: logout-user
-     * Descripción: Cierra la sesión del usuario sin cerrar el socket
-     */
+
     socket.on('logout-user', () => {
       if (socket.currentRoom) {
         const roomId = socket.currentRoom;
@@ -363,11 +317,7 @@ module.exports = (io) => {
       emitGlobalUpdates();
     });
 
-    /**
-     * Evento: kick-user-admin
-     * Descripción: Expulsa a un usuario de una sala desde el panel admin
-     * Datos: { roomId: number, socketId: string }
-     */
+
     socket.on('kick-user-admin', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
       const targetSocketId = data && typeof data.socketId === 'string' ? data.socketId : '';
@@ -411,12 +361,7 @@ module.exports = (io) => {
       emitGlobalUpdates();
     });
 
-    /**
-     * Evento: draw-data
-     * Descripción: Transmite datos de dibujo a otros usuarios en la misma sala
-     * Datos: { x, y, color }
-     */
-    // Inicio de trazo: el cliente notifica cuando comienza un trazo (mousedown)
+
     socket.on('draw-start', (data) => {
       if (!socket.currentRoom || !socket.username) return;
       // data: { strokeId, meta, point }
@@ -465,16 +410,13 @@ module.exports = (io) => {
       }
     });
 
-    // Fin de trazo: cliente notifica cuando suelta el ratón (mouseup)
     socket.on('draw-end', (data) => {
       if (!socket.currentRoom || !socket.username) return;
-      // Si no hay trazo en curso, nada que hacer
       if (!socket._currentStroke) {
         if (typeof data === 'function') return; // evitar confusión con callback
         return;
       }
 
-      // Construir la entrada agrupada de historial
       const entry = {
         __type: 'stroke',
         stroke: {
@@ -493,10 +435,7 @@ module.exports = (io) => {
       broadcastRoomHistory(socket.currentRoom);
     });
 
-    /**
-     * Evento: clear-canvas
-     * Descripción: Limpia el lienzo de todos los participantes en la sala
-     */
+
     socket.on('clear-canvas', () => {
       if (!socket.currentRoom) return;
       pushToHistory(socket.currentRoom, {
@@ -508,10 +447,7 @@ module.exports = (io) => {
       broadcastRoomHistory(socket.currentRoom);
     });
 
-    /**
-     * Evento: undo-drawing
-     * Descripción: Deshace la última acción del lienzo de la sala
-     */
+
     socket.on('undo-drawing', (callback) => {
       if (!socket.currentRoom) {
         sendError(callback, 'No estás en ninguna sala');
@@ -533,10 +469,7 @@ module.exports = (io) => {
       broadcastRoomHistory(roomId);
     });
 
-    /**
-     * Evento: redo-drawing
-     * Descripción: Rehace la última acción deshecha del lienzo de la sala
-     */
+
     socket.on('redo-drawing', (callback) => {
       if (!socket.currentRoom) {
         sendError(callback, 'No estás en ninguna sala');
@@ -558,11 +491,7 @@ module.exports = (io) => {
       broadcastRoomHistory(roomId);
     });
 
-    /**
-     * Evento: flood-fill
-     * Descripción: Transmite los datos de relleno con bote de pintura a la sala
-     * Datos: { x, y, color }
-     */
+
     socket.on('flood-fill', (data) => {
       if (!socket.currentRoom) return;
 
@@ -573,11 +502,7 @@ module.exports = (io) => {
       emitRoomHistoryState(socket.currentRoom);
     });
 
-    /**
-     * Evento: disconnect
-     * Descripción: Se ejecuta cuando un usuario se desconecta
-     * Limpia datos del usuario de todas las salas
-     */
+
     socket.on('disconnect', () => {
       console.log('Desconexion: ' + (socket.username || socket.id));
 
