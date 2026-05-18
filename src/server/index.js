@@ -34,16 +34,25 @@ const socketManager = require('./sockets/socketManager');
 socketManager(io);
 
 /**
- * SERVIDOR TCP (para dibujadores IoT)
- */
-const createTcpServer = require('./tcp/tcpServer');
-const tcpServer = createTcpServer(io);
-
-/**
  * INICIAR SERVIDORES
  */
 const PORT = process.env.PORT || 3000;
 const TCP_PORT = process.env.TCP_PORT || 4000;
+const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_URL);
+const enableTcpServer = typeof process.env.ENABLE_TCP_SERVER === 'string'
+  ? process.env.ENABLE_TCP_SERVER === 'true'
+  : !isRender;
+
+let tcpServer = null;
+
+/**
+ * SERVIDOR TCP (para dibujadores IoT)
+ * En Render se desactiva por defecto para no bloquear el despliegue web.
+ */
+if (enableTcpServer) {
+  const createTcpServer = require('./tcp/tcpserver');
+  tcpServer = createTcpServer(io);
+}
 
 server.listen(PORT, () => {
   console.log('');
@@ -55,9 +64,13 @@ server.listen(PORT, () => {
   console.log('');
 });
 
-tcpServer.listen(TCP_PORT, () => {
-  console.log('TCP Server listening on port ' + TCP_PORT);
-});
+if (tcpServer) {
+  tcpServer.listen(TCP_PORT, () => {
+    console.log('TCP Server listening on port ' + TCP_PORT);
+  });
+} else {
+  console.log('TCP Server desactivado para este entorno');
+}
 
 module.exports = { app, io };
 
