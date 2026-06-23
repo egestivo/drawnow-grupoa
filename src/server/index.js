@@ -24,7 +24,7 @@ app.use(express.json());
 
 // Inicializar Passport justo después de los middlewares básicos
 app.use(passport.initialize());
-require('./config/passport');  
+require('../config/passport');
 
 const pageRoutes = require('./routes/pages');
 app.use(pageRoutes);

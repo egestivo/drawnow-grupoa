@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (userDisplay) userDisplay.textContent = currentUser;
     
     // Iniciar sesión automáticamente en el servidor de WebSockets usando el flujo original
-    socket.emit('login-user', { username: currentUser }, (response) => {
+    socket.emit('login', { username: currentUser }, (response) => {
       // Nos saltamos la pantalla de inicio vieja e ir directo a las salas
       showScreen(roomsScreen);
       socket.emit('list-rooms');
