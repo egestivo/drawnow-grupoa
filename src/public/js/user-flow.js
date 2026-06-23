@@ -38,6 +38,54 @@ const roomsList = document.getElementById('roomsList');
 const noRoomsSection = document.getElementById('noRoomsSection');
 const roomsListSection = document.getElementById('roomsListSection');
 
+// =========================================================
+// INTERCEPTOR DE AUTENTICACIÓN UNIFICADA (JWT & GOOGLE)
+// =========================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Capturar tokens de Google OAuth si venimos redirigidos desde el Backend
+  const urlParams = new URLSearchParams(window.location.search);
+  const tokenFromUrl = urlParams.get('token');
+  const usernameFromUrl = urlParams.get('username');
+
+  if (tokenFromUrl && usernameFromUrl) {
+    localStorage.setItem('token', tokenFromUrl);
+    localStorage.setItem('username', usernameFromUrl);
+    // Limpiar los parámetros de la barra de direcciones para que se vea estético
+    window.history.replaceState({}, document.title, '/');
+  }
+
+  // 2. Verificar si el usuario ya tiene una sesión válida en este navegador
+  const savedToken = localStorage.getItem('token');
+  const savedUsername = localStorage.getItem('username');
+
+  if (savedToken && savedUsername) {
+    currentUser = savedUsername;
+    if (userDisplay) userDisplay.textContent = currentUser;
+    
+    // Iniciar sesión automáticamente en el servidor de WebSockets usando el flujo original
+    socket.emit('login-user', { username: currentUser }, (response) => {
+      // Nos saltamos la pantalla de inicio vieja e ir directo a las salas
+      showScreen(roomsScreen);
+      socket.emit('list-rooms');
+    });
+  }
+});
+
+// 3. Reemplazar la acción del botón "Acceso Usuario" principal
+if (userAccessBtn) {
+  // Buscaremos quitarle o sobreescribir el evento original para mandarlo a nuestro login real
+  userAccessBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const token = localStorage.getItem('token');
+    if (token) {
+      showScreen(roomsScreen);
+    } else {
+      // Si no está autenticado, lo mandamos a la nueva pantalla unificada de Login/Registro
+      window.location.href = '/login'; 
+    }
+  });
+}
+
 /**
  * Alterna entre pantallas ocultando todas excepto la especificada
  * @param {HTMLElement} screen - Elemento de pantalla a mostrar
@@ -61,14 +109,6 @@ function showError(message) {
   setTimeout(() => loginError.classList.add('d-none'), 3000);
 }
 
-/**
- * EVENT: Click en botón "Acceso Usuario"
- * Muestra la pantalla de login y enfoca el input de nombre
- */
-userAccessBtn.addEventListener('click', () => {
-  showScreen(loginScreen);
-  usernameInput.focus();
-});
 
 /**
  * EVENT: Click en botón "Panel Administrador"
@@ -333,16 +373,23 @@ socket.on('kicked-from-room', (data) => {
 
 /**
  * EVENT: Click en botón "Salir" (logout)
- * Cierra la sesión del usuario y retorna al inicio
+ * Cierra la sesión del usuario y limpia los Tokens de seguridad
  */
 document.getElementById('logoutBtn').addEventListener('click', () => {
   socket.emit('logout-user');
+  
+  // CORRECCIÓN: Limpiar el almacenamiento local para cerrar sesión de verdad
+  localStorage.removeItem('token');
+  localStorage.removeItem('username');
+  
   currentUser = null;
   currentRoomId = null;
   currentRoom = null;
   clearCanvas();
   if (typeof updateHistoryControls === 'function') updateHistoryControls(null);
-  showScreen(homeScreen);
+  
+  // Redirigir a la pantalla de acceso
+  window.location.href = '/login';
 });
 
 socket.on('canvas-history', (history) => {

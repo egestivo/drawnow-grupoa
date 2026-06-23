@@ -78,12 +78,12 @@ router.post('/login', async (req, res) => {
 // RUTAS NUEVAS: OAUTH 2.0 (GOOGLE)
 // ==========================================
 
-// 1. Ruta que el frontend dispara para ir a logearse a Google
+// Ruta que el frontend dispara para ir a logearse a Google
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
 
-// 2. Callback a donde Google redirige al usuario con el resultado
+// Callback a donde Google redirige al usuario con el resultado
 router.get('/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/login.html', session: false }),
+  passport.authenticate('google', { failureRedirect: '/login', session: false }),
   (req, res) => {
     // Al autenticarse con éxito, req.user tiene los datos del usuario de la BD
     const payload = { id: req.user._id, username: req.user.username };
@@ -91,9 +91,9 @@ router.get('/google/callback',
     const token = jwt.sign(payload, process.env.JWT_SECRET || 'drawnow_auth_secret_dev', {
       expiresIn: '12h'
     });
-
-    // Redirigimos al frontend pasándole el JWT y el username en la URL
-    res.redirect(`/index.html?token=${token}&username=${encodeURIComponent(req.user.username)}`);
+    
+    // EFECTUAR REDIRECCIÓN: Mandamos el token y el usuario directo a la app principal por la URL
+    res.redirect(`/?token=${token}&username=${encodeURIComponent(req.user.username)}`);
   }
 );
 

@@ -76,9 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Si el login tradicional fue exitoso, guardamos el JWT y redirigimos
                 localStorage.setItem('token', data.token);
                 localStorage.setItem('username', data.user.username);
-                
-                // Redirigir a la pantalla principal de la pizarra
-                window.location.href = '/index.html';
+    
+                // REDIRECCIÓN CORREGIDA: Ir a la raíz del servidor
+                window.location.href = '/';
             }
 
         } catch (error) {
