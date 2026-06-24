@@ -22,17 +22,17 @@ const io = new Server(server, {
 app.use(express.static(path.join(__dirname, '../public')));
 app.use(express.json());
 
-// Inicializar Passport justo después de los middlewares básicos
+// ← PRIMERO configurar passport y su estrategia
 app.use(passport.initialize());
 require('../config/passport');
 
+// ← DESPUÉS cargar las rutas
 const pageRoutes = require('./routes/pages');
 app.use(pageRoutes);
 
 const apiRoutes = require('./routes/api');
 app.use('/api', apiRoutes);
 
-// Rutas de autenticación (Login / Registro / Google OAuth)
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
