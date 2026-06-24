@@ -66,7 +66,7 @@ app.use('/auth', authRoutes);
 const socketManager = require('./sockets/socketManager');
 socketManager(io);
 
-const createTcpServer = require('./tcp/tcpServer');
+const createTcpServer = require('./tcp/tcpserver');
 const tcpServer = createTcpServer(io);
 
 const PORT = process.env.PORT || 3000;
