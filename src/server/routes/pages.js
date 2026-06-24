@@ -20,4 +20,9 @@ router.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/pages/admin-panel.html'));
 });
 
-module.exports = router;
+// NUEVA RUTA: Página de recuperación/restablecimiento de contraseña
+router.get('/reset-password', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../public/pages/reset-password.html'));
+});
+
+module.exports = router;

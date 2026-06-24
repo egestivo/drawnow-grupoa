@@ -97,4 +97,103 @@ router.get('/google/callback',
   }
 );
 
-module.exports = router;
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ==========================================
+
+/**
+ * POST /api/auth/forgot-password
+ * Genera un token JWT de corta duración para restablecer la contraseña.
+ * Retorna el enlace directamente (sin email, modo demo/universitario).
+ */
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'El nombre de usuario es requerido.' });
+    }
+
+    const user = await Usuario.findOne({ username });
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'No existe ninguna cuenta con ese nombre de usuario.' });
+    }
+
+    // Los usuarios de Google no tienen contraseña local
+    if (!user.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Esta cuenta fue creada con Google. Inicia sesión con Google directamente.'
+      });
+    }
+
+    // Generar token JWT de un solo uso con expiración de 15 minutos
+    const payload = { id: user._id, username: user.username, type: 'password-reset' };
+    const resetToken = jwt.sign(payload, process.env.JWT_SECRET || 'drawnow_auth_secret_dev', {
+      expiresIn: '15m'
+    });
+
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
+
+    res.json({
+      success: true,
+      message: 'Enlace de recuperación generado correctamente. Válido por 15 minutos.',
+      resetLink
+    });
+  } catch (error) {
+    console.error('Error en forgot-password:', error);
+    res.status(500).json({ success: false, message: 'Error en el servidor.' });
+  }
+});
+
+/**
+ * POST /api/auth/reset-password
+ * Valida el token JWT de recuperación y actualiza la contraseña del usuario.
+ */
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token y nueva contraseña son requeridos.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres.' });
+    }
+
+    // Verificar y decodificar el JWT
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET || 'drawnow_auth_secret_dev');
+    } catch (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({ success: false, message: 'El enlace de recuperación ha expirado. Solicita uno nuevo.' });
+      }
+      return res.status(401).json({ success: false, message: 'Token inválido o manipulado.' });
+    }
+
+    // Validar que sea un token de tipo password-reset
+    if (payload.type !== 'password-reset') {
+      return res.status(401).json({ success: false, message: 'Token no válido para esta operación.' });
+    }
+
+    // Buscar al usuario y actualizar la contraseña
+    const user = await Usuario.findById(payload.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    res.json({ success: true, message: '¡Contraseña actualizada correctamente! Ya puedes iniciar sesión.' });
+  } catch (error) {
+    console.error('Error en reset-password:', error);
+    res.status(500).json({ success: false, message: 'Error en el servidor.' });
+  }
+});
+
+module.exports = router;
