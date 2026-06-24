@@ -12,44 +12,46 @@
 
   <div class="admin-login-wrapper">
     <div class="admin-login-container">
-      <div class="admin-login-card">
+
+      <!-- ============ LOGIN CARD ============ -->
+      <div id="loginCard" class="admin-login-card">
         <h1>DrawNow</h1>
         <p class="admin-title" id="authTitle">Iniciar Sesión</p>
 
         <form id="authForm">
           <div class="form-group mb-3">
-            <label for="authUser">Usuario / Email:</label>
-            <input
-              type="text"
-              id="authUser"
-              class="form-control form-control-lg"
-              placeholder="Tu usuario"
-              required
-            >
+            <label for="authUser">Usuario:</label>
+            <input type="text" id="authUser" class="form-control form-control-lg" placeholder="Tu usuario" required>
           </div>
 
-          <div class="form-group mb-3">
+          <div id="emailGroup" class="form-group mb-3 d-none">
+            <label for="authEmail">Correo Electrónico:</label>
+            <input type="email" id="authEmail" class="form-control form-control-lg" placeholder="correo@ejemplo.com">
+          </div>
+
+          <div id="passwordGroup" class="form-group mb-3">
             <label for="authPassword">Contraseña:</label>
-            <input
-              type="password"
-              id="authPassword"
-              class="form-control form-control-lg"
-              placeholder="*****"
-              required
-            >
+            <input type="password" id="authPassword" class="form-control form-control-lg" placeholder="*****" required>
+          </div>
+
+          <div id="confirmPasswordGroup" class="form-group mb-3 d-none">
+            <label for="authConfirmPassword">Repetir Contraseña:</label>
+            <input type="password" id="authConfirmPassword" class="form-control form-control-lg" placeholder="*****">
           </div>
 
           <div id="authAlert" class="alert d-none" role="alert"></div>
 
           <div class="admin-buttons">
-            <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">
-              Ingresar
-            </button>
+            <button type="submit" class="btn btn-primary btn-lg w-100" id="submitBtn">Ingresar</button>
           </div>
         </form>
 
+        <div class="text-center my-2">
+          <a href="#" id="forgotPasswordLink" class="text-decoration-none small">¿Olvidaste tu contraseña?</a>
+        </div>
+
         <div class="text-center my-3 text-muted">ó también puedes</div>
-        
+
         <a href="/api/auth/google" class="btn btn-outline-danger btn-lg w-100 d-flex align-items-center justify-content-center gap-2">
           <i class="bi bi-google"></i> Continuar con Google
         </a>
@@ -58,6 +60,64 @@
           <a href="#" id="toggleAuthMode" class="text-decoration-none">¿No tienes cuenta? Regístrate aquí</a>
         </div>
       </div>
+
+      <!-- ============ FORGOT PASSWORD CARD ============ -->
+      <div id="forgotCard" class="admin-login-card d-none">
+        <h1>DrawNow</h1>
+        <p class="admin-title">Recuperar Contraseña</p>
+
+        <form id="forgotForm">
+          <div class="form-group mb-3">
+            <label for="forgotEmail">Correo Electrónico Registrado:</label>
+            <input type="email" id="forgotEmail" class="form-control form-control-lg" placeholder="correo@ejemplo.com" required>
+          </div>
+
+          <div id="forgotAlert" class="alert d-none" role="alert"></div>
+
+          <div id="tokenDisplay" class="d-none mb-3">
+            <label>Tu token de recuperación (válido por 5 minutos):</label>
+            <textarea id="tokenText" class="form-control mt-2" rows="2" readonly style="resize:none;"></textarea>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100" id="forgotSubmitBtn">Generar Token</button>
+        </form>
+
+        <div class="text-center mt-4">
+          <a href="#" id="backToLoginFromForgot" class="text-decoration-none">Volver a Iniciar Sesión</a>
+        </div>
+      </div>
+
+      <!-- ============ RESET PASSWORD CARD ============ -->
+      <div id="resetCard" class="admin-login-card d-none">
+        <h1>DrawNow</h1>
+        <p class="admin-title">Restablecer Contraseña</p>
+
+        <form id="resetForm">
+          <div class="form-group mb-3">
+            <label for="resetToken">Token de Recuperación:</label>
+            <input type="text" id="resetToken" class="form-control form-control-lg" placeholder="Pega tu token aquí" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="resetNewPassword">Nueva Contraseña:</label>
+            <input type="password" id="resetNewPassword" class="form-control form-control-lg" placeholder="*****" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label for="resetConfirmPassword">Repetir Nueva Contraseña:</label>
+            <input type="password" id="resetConfirmPassword" class="form-control form-control-lg" placeholder="*****" required>
+          </div>
+
+          <div id="resetAlert" class="alert d-none" role="alert"></div>
+
+          <button type="submit" class="btn btn-primary btn-lg w-100" id="resetSubmitBtn">Restablecer</button>
+        </form>
+
+        <div class="text-center mt-4">
+          <a href="#" id="backToLoginFromReset" class="text-decoration-none">Volver a Iniciar Sesión</a>
+        </div>
+      </div>
+
     </div>
   </div>
 

@@ -9,46 +9,73 @@
 </head>
 <body class="bg-gradient">
 
-  <nav class="navbar navbar-dark bg-dark">
+  <nav class="navbar navbar-dark navbar-custom">
     <div class="container-fluid">
       <span class="navbar-brand mb-0">
-        DrawNow - Panel Administrador
+        <i class="bi bi-shield-lock-fill me-2"></i>DrawNow - Admin Dashboard
       </span>
-      <button class="btn btn-logout" id="adminLogoutBtn">
-        Cerrar Sesión
-      </button>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-light" id="adminUserDisplay"></span>
+        <button class="btn btn-outline-light btn-sm" id="adminLogoutBtn">Cerrar Sesión</button>
+      </div>
     </div>
   </nav>
 
   <div class="container-fluid py-4">
-    <!-- Estadísticas generales -->
-    <div class="row mb-4">
-      <div class="col-md-4">
-        <div class="stat-card">
+
+    <!-- FILA DE MÉTRICAS -->
+    <div class="row mb-4 g-3">
+      <div class="col-md-3 col-6">
+        <div class="stat-card metric-card">
+          <div class="metric-icon"><i class="bi bi-people-fill"></i></div>
           <div class="stat-label">Usuarios Conectados</div>
           <div class="stat-value" id="totalUsers">0</div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="stat-card">
+      <div class="col-md-3 col-6">
+        <div class="stat-card metric-card">
+          <div class="metric-icon"><i class="bi bi-door-open-fill"></i></div>
           <div class="stat-label">Salas Activas</div>
           <div class="stat-value" id="totalRooms">0</div>
         </div>
       </div>
-      <div class="col-md-4">
-        <div class="stat-card">
+      <div class="col-md-3 col-6">
+        <div class="stat-card metric-card metric-card-info">
+          <div class="metric-icon"><i class="bi bi-info-circle-fill"></i></div>
+          <div class="stat-label">Logs INFO</div>
+          <div class="stat-value" id="logCountInfo">0</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6">
+        <div class="stat-card metric-card metric-card-warn">
+          <div class="metric-icon"><i class="bi bi-exclamation-triangle-fill"></i></div>
+          <div class="stat-label">Logs WARN</div>
+          <div class="stat-value" id="logCountWarn">0</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6 mt-3">
+        <div class="stat-card metric-card metric-card-error">
+          <div class="metric-icon"><i class="bi bi-x-octagon-fill"></i></div>
+          <div class="stat-label">Logs ERROR</div>
+          <div class="stat-value" id="logCountError">0</div>
+        </div>
+      </div>
+      <div class="col-md-3 col-6 mt-3">
+        <div class="stat-card metric-card">
+          <div class="metric-icon"><i class="bi bi-clock-fill"></i></div>
           <div class="stat-label">Ult. Actualización</div>
           <div class="stat-update-time" id="lastUpdate">--:--:--</div>
         </div>
       </div>
     </div>
 
-    <!-- Detalle de salas -->
-    <div class="row">
-      <div class="col-md-12">
+    <!-- FILA: SALAS + CONSOLA DE LOGS -->
+    <div class="row g-3">
+      <!-- Panel de Salas -->
+      <div class="col-lg-6">
         <div class="card">
           <div class="admin-card-header">
-            Salas en Tiempo Real
+            <i class="bi bi-door-open-fill me-2"></i>Salas en Tiempo Real
           </div>
           <div class="admin-card-body">
             <div id="roomsDetails"></div>
@@ -58,12 +85,28 @@
           </div>
         </div>
       </div>
+
+      <!-- Consola de Logs en Vivo -->
+      <div class="col-lg-6">
+        <div class="card">
+          <div class="admin-card-header">
+            <i class="bi bi-terminal-fill me-2"></i>Consola de Logs en Vivo
+            <button class="btn btn-sm btn-outline-light ms-auto" id="clearLogsBtn" title="Limpiar consola">
+              <i class="bi bi-trash"></i>
+            </button>
+          </div>
+          <div class="log-console" id="logConsole">
+            <div class="log-line log-info">[SISTEMA] Consola de logs iniciada...</div>
+          </div>
+        </div>
+      </div>
     </div>
+
   </div>
 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/js/admin-panel.js"></script>
 </body>
 </html>
-

@@ -1,10 +1,11 @@
 const roomManager = require('../controller/roomController');
 const userManager = require('../controller/userManager');
 const jwt = require('jsonwebtoken');
+const Sala = require('../models/Sala');
+const logger = require('../logs/logger');
 
 module.exports = (io) => {
 
-  // Middleware de autenticación JWT para sockets
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
 
@@ -14,7 +15,7 @@ module.exports = (io) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'drawnow_auth_secret_dev');
-      socket.jwtUser = decoded; // { id, username }
+      socket.jwtUser = decoded;
       next();
     } catch (err) {
       return next(new Error('Token inválido'));
@@ -94,10 +95,16 @@ module.exports = (io) => {
   };
 
   io.on('connection', (socket) => {
-    console.log('Conexion: ' + socket.id);
+    const userLabel = socket.jwtUser ? socket.jwtUser.username : 'unknown';
+    logger.debug('Socket conectado: ' + socket.id + ' user=' + userLabel, { category: 'sistema' });
     socket.kickedRooms = new Set();
 
-    // Login automático desde JWT — ya no se necesita evento 'login' manual
+    // Si es admin, unirlo a la sala 'admins' para logs en vivo
+    if (socket.jwtUser && socket.jwtUser.username === 'admin') {
+      socket.join('admins');
+      logger.info('Admin conectado al panel de logs en vivo - user=' + userLabel, { category: 'sistema' });
+    }
+
     const username = socket.jwtUser.username;
     const colors = [
       '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb',
@@ -108,7 +115,7 @@ module.exports = (io) => {
     socket.username = username;
     socket.color = userColor;
     userManager.addUser(socket.id, username, userColor);
-    console.log('Conectado autenticado: ' + username);
+    logger.info('Usuario autenticado conectado: ' + username, { category: 'sistema' });
     emitGlobalUpdates();
 
     socket.on('list-rooms', (data, callback) => {
@@ -128,9 +135,12 @@ module.exports = (io) => {
       }
 
       const room = roomManager.createRoom(roomName, socket.username);
+      Sala.create({ nombre: roomName || `Sala ${room.id}`, idUsuario: socket.jwtUser.id }).catch(err => {
+        logger.error('Error guardando sala en MongoDB: ' + err.message, { category: 'sistema' });
+      });
       if (callback) callback({ success: true, room });
       emitGlobalUpdates();
-      console.log('Sala creada: ' + room.name + ' por: ' + socket.username);
+      logger.info('Sala creada: ' + room.name + ' por: ' + socket.username + ' id=' + room.id, { category: 'sistema' });
     });
 
     socket.on('join-room', (data, callback) => {
@@ -180,7 +190,7 @@ module.exports = (io) => {
       });
 
       emitGlobalUpdates();
-      console.log('Unio: ' + socket.username + ' a sala ' + roomId);
+      logger.info('Usuario entró a sala: ' + socket.username + ' salaId=' + roomId + ' sala=' + room.name, { category: 'sistema' });
     });
 
     socket.on('leave-room', (data, callback) => {
@@ -208,7 +218,7 @@ module.exports = (io) => {
       });
 
       emitGlobalUpdates();
-      console.log('Salio: ' + socket.username + ' de sala ' + roomId);
+      logger.info('Usuario salió de sala: ' + socket.username + ' salaId=' + roomId, { category: 'sistema' });
 
       if (socket.currentRoom === roomId) {
         socket.currentRoom = null;
@@ -219,6 +229,16 @@ module.exports = (io) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
         sendError(callback, 'Sala no valida');
+        return;
+      }
+
+      const room = roomManager.rooms.find(r => r.id === roomId);
+      if (!room) {
+        sendError(callback, 'Sala no encontrada');
+        return;
+      }
+      if (room.createdBy !== socket.username) {
+        sendError(callback, 'No puedes eliminar esta sala porque no la creaste tú');
         return;
       }
 
@@ -240,7 +260,7 @@ module.exports = (io) => {
       canvasRedoHistory.delete(roomId);
 
       emitGlobalUpdates();
-      console.log('Sala ' + roomId + ' eliminada por: ' + socket.username);
+      logger.info('Sala eliminada por usuario: ' + roomId + ' por: ' + socket.username, { category: 'sistema' });
     });
 
     socket.on('delete-room-admin', (data, callback) => {
@@ -263,7 +283,7 @@ module.exports = (io) => {
       });
 
       emitGlobalUpdates();
-      console.log('Sala ' + roomId + ' eliminada por Administrador');
+      logger.info('Sala eliminada por Administrador: ' + roomId, { category: 'sistema' });
     });
 
     socket.on('logout-user', () => {
@@ -286,6 +306,7 @@ module.exports = (io) => {
       socket.username = null;
       socket.color = null;
       emitGlobalUpdates();
+      logger.info('Usuario cerró sesión: ' + (socket.jwtUser ? socket.jwtUser.username : 'unknown'), { category: 'auth' });
     });
 
     socket.on('kick-user-admin', (data, callback) => {
@@ -329,6 +350,7 @@ module.exports = (io) => {
 
       if (callback) callback({ success: true, message: 'Usuario expulsado correctamente' });
       emitGlobalUpdates();
+      logger.info('Admin expulsó usuario - salaId=' + roomId + ' targetSocket=' + targetSocketId, { category: 'sistema' });
     });
 
     socket.on('draw-start', (data) => {
@@ -454,7 +476,7 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', () => {
-      console.log('Desconexion: ' + (socket.username || socket.id));
+      logger.info('Socket desconectado: ' + (socket.username || socket.id), { category: 'sistema' });
 
       if (socket.currentRoom) {
         const room = roomManager.leaveRoom(socket.currentRoom, socket.id);

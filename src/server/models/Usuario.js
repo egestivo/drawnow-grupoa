@@ -6,6 +6,11 @@ required: true,
 unique: true,
 trim: true
 },
+email: {
+type: String,
+required: false,
+trim: true
+},
 password: {
 type: String,
 required: false

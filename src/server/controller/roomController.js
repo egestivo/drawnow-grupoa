@@ -1,3 +1,5 @@
+const logger = require('../logs/logger');
+
 /**
  * GESTOR DE SALAS - RoomManager
  * Responsabilidades:
@@ -50,6 +52,7 @@ class RoomManager {
       updated: new Date()
     };
     this.rooms.push(room);
+    logger.debug('RoomManager: sala creada internamente - id=' + room.id + ' nombre="' + room.name + '" creador=' + createdBy, { category: 'sistema' });
     return room;
   }
 
@@ -108,6 +111,7 @@ class RoomManager {
     }
 
     this.rooms = this.rooms.filter(r => r.id !== roomId);
+    logger.debug('RoomManager: sala eliminada - id=' + roomId, { category: 'sistema' });
     return { success: true, message: 'Sala eliminada' };
   }
 

@@ -1,9 +1,11 @@
 const net = require('net');
 const roomManager = require('../controller/roomController');
+const logger = require('../logs/logger');
 
 module.exports = (io) => {
   const tcpServer = net.createServer((tcpSocket) => {
-    console.log('TCP conectado: ' + tcpSocket.remoteAddress);
+    const remoteAddr = tcpSocket.remoteAddress || 'desconocido';
+    logger.info('TCP conectado: ' + remoteAddr, { category: 'sistema' });
 
     tcpSocket.on('data', (buffer) => {
       try {
@@ -19,18 +21,18 @@ module.exports = (io) => {
           user: 'TCP_Bot'
         });
 
-        console.log('Dibujo TCP en sala ' + roomId);
+        logger.debug('Dibujo TCP en sala ' + roomId + ' desde ' + remoteAddr, { category: 'sistema' });
       } catch (err) {
-        console.error('Error TCP: ' + err.message);
+        logger.error('Error procesando datos TCP: ' + err.message, { category: 'sistema' });
       }
     });
 
     tcpSocket.on('end', () => {
-      console.log('TCP desconectado');
+      logger.info('TCP desconectado: ' + remoteAddr, { category: 'sistema' });
     });
 
     tcpSocket.on('error', (err) => {
-      console.error('Error TCP: ' + err.message);
+      logger.error('Error en socket TCP (' + remoteAddr + '): ' + err.message, { category: 'sistema' });
     });
   });
 

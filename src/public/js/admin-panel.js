@@ -1,47 +1,46 @@
-/**
- * MÓDULO: Admin Panel
- * Descripción: Gestiona el panel de administración con estadísticas en tiempo real
- * Responsabilidades:
- *   - Mostrar estadísticas de usuarios y salas
- *   - Actualizar datos en tiempo real vía WebSocket y API REST
- *   - Proteger acceso con validación de token
- *   - Logout del administrador
- */
+function getAdminToken() {
+  return localStorage.getItem('adminToken');
+}
 
-const socket = io();
+const adminToken = getAdminToken();
+if (!adminToken) {
+  window.location.href = '/auth/admin';
+}
 
-// Elementos del DOM
+try {
+  const payload = JSON.parse(atob(adminToken.split('.')[1]));
+  if (payload.username !== 'admin') {
+    window.location.href = '/auth/admin';
+  }
+} catch (e) {
+  window.location.href = '/auth/admin';
+}
+
+const socket = io({ auth: { token: adminToken } });
+
 const totalUsersElement = document.getElementById('totalUsers');
 const totalRoomsElement = document.getElementById('totalRooms');
 const lastUpdateElement = document.getElementById('lastUpdate');
 const roomsDetailsElement = document.getElementById('roomsDetails');
 const noRoomsMessageElement = document.getElementById('noRoomsMessage');
 const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+const adminUserDisplay = document.getElementById('adminUserDisplay');
+const logConsole = document.getElementById('logConsole');
+const clearLogsBtn = document.getElementById('clearLogsBtn');
 
-/**
- * Verifica si el usuario tiene autenticación válida
- * Si no la tiene, redirige a la página de login del admin
- */
-function checkAdminAuth() {
-  const token = localStorage.getItem('adminToken');
-  if (!token) {
-    window.location.href = '/auth/admin';
-    return false;
-  }
-  return true;
-}
+const logCountInfo = document.getElementById('logCountInfo');
+const logCountWarn = document.getElementById('logCountWarn');
+const logCountError = document.getElementById('logCountError');
 
-/**
- * Actualiza la interfaz con las estadísticas recibidas
- * @param {object} data - Datos con información de salas y usuarios
- */
+let logCounters = { info: 0, warn: 0, error: 0 };
+
+adminUserDisplay.textContent = 'Admin: admin';
+
 function updateStatistics(data) {
-  // Actualizar contadores principales
   totalUsersElement.textContent = data.totalConnectedUsers || 0;
   totalRoomsElement.textContent = data.totalRooms || 0;
   lastUpdateElement.textContent = new Date().toLocaleTimeString('es-ES');
 
-  // Actualizar lista de salas
   if (!data.rooms || data.rooms.length === 0) {
     roomsDetailsElement.innerHTML = '';
     noRoomsMessageElement.classList.remove('d-none');
@@ -71,25 +70,17 @@ function updateStatistics(data) {
   }
 }
 
-/**
- * Renderiza la lista de participantes de una sala para el panel admin
- * @param {object} room - Sala con participantes detallados
- * @returns {string} HTML de participantes
- */
 function renderParticipants(room) {
   const participants = Array.isArray(room.participants) ? room.participants : [];
-
   if (participants.length === 0) {
     return '<small><strong>Participantes:</strong> ninguno</small>';
   }
-
   return `
     <div class="participants-list">
       <small class="participants-title"><strong>Participantes:</strong></small>
       ${participants.map(participant => {
         const username = participant.username || String(participant);
         const socketId = participant.socketId || '';
-
         return `
           <div class="participant-item">
             <span class="participant-name">${username}</span>
@@ -101,73 +92,87 @@ function renderParticipants(room) {
   `;
 }
 
-/**
- * EVENT SOCKET: user-stats-updated
- * Se recibe cuando hay cambios en salas o usuarios
- */
 socket.on('user-stats-updated', updateStatistics);
 
-/**
- * Actualiza estadísticas vía API REST cada 2 segundos
- * Proporciona actualización periódica independiente de WebSocket
- */
 setInterval(async () => {
   try {
     const response = await fetch('/api/stats');
     const data = await response.json();
     updateStatistics(data);
   } catch (err) {
-    console.error('Error fetching stats:', err);
+    appendLog('error', 'Error fetching stats: ' + err.message);
   }
 }, 2000);
 
-/**
- * EVENT: Click en botón "Cerrar Sesión"
- * Elimina el token de autenticación y redirige a login del admin
- */
 adminLogoutBtn.addEventListener('click', () => {
   localStorage.removeItem('adminToken');
-  localStorage.removeItem('adminTokenTime');
   window.location.href = '/auth/admin';
 });
 
-/**
- * Inicialización: Verificar autenticación
- */
-if (!checkAdminAuth()) {
-  throw new Error('No autorizado');
+clearLogsBtn.addEventListener('click', () => {
+  logConsole.innerHTML = '<div class="log-line log-info">[SISTEMA] Consola limpiada.</div>';
+});
+
+function appendLog(level, message) {
+  const line = document.createElement('div');
+  const now = new Date().toLocaleTimeString('es-ES');
+  const levelUpper = level.toUpperCase();
+
+  line.className = 'log-line';
+
+  if (level === 'error' || level === 'fatal') {
+    line.classList.add('log-error');
+    line.innerHTML = `<span class="log-time">${now}</span> <span class="log-badge badge-error">${levelUpper}</span> ${message}`;
+    logCounters.error++;
+    logCountError.textContent = logCounters.error;
+  } else if (level === 'warn') {
+    line.classList.add('log-warn');
+    line.innerHTML = `<span class="log-time">${now}</span> <span class="log-badge badge-warn">${levelUpper}</span> ${message}`;
+    logCounters.warn++;
+    logCountWarn.textContent = logCounters.warn;
+  } else {
+    line.classList.add('log-info');
+    line.innerHTML = `<span class="log-time">${now}</span> <span class="log-badge badge-info">${levelUpper}</span> ${message}`;
+    logCounters.info++;
+    logCountInfo.textContent = logCounters.info;
+  }
+
+  logConsole.appendChild(line);
+  logConsole.scrollTop = logConsole.scrollHeight;
+
+  if (logConsole.children.length > 500) {
+    logConsole.removeChild(logConsole.firstChild);
+  }
 }
 
-/**
- * Elimina una sala desde el panel de administración (solo si está vacía)
- * @param {number} roomId - ID de la sala a eliminar
- */
+socket.on('admin-log', (data) => {
+  appendLog(data.level, data.message);
+});
+
 window.deleteRoom = (roomId) => {
   if (confirm('¿Seguro que deseas eliminar esta sala?')) {
     socket.emit('delete-room-admin', { roomId }, (response) => {
       if (response.success) {
-        alert(response.message || 'Sala eliminada con éxito.');
+        appendLog('info', 'Sala ' + roomId + ' eliminada por admin.');
       } else {
-        alert(response.message || 'No se pudo eliminar la sala.');
+        appendLog('warn', 'No se pudo eliminar sala ' + roomId + ': ' + (response.message || ''));
       }
     });
   }
 };
 
-/**
- * Expulsa a un usuario de una sala desde el panel admin
- * @param {number} roomId - ID de la sala
- * @param {string} socketId - Socket del usuario
- */
 window.kickUser = (roomId, socketId) => {
   if (confirm('¿Quieres sacar a este usuario de la sala?')) {
     socket.emit('kick-user-admin', { roomId, socketId }, (response) => {
       if (response.success) {
-        alert(response.message || 'Usuario expulsado correctamente.');
+        appendLog('info', 'Usuario expulsado de sala ' + roomId);
       } else {
-        alert(response.message || 'No se pudo expulsar al usuario.');
+        appendLog('warn', 'No se pudo expulsar usuario: ' + (response.message || ''));
       }
     });
   }
 };
 
+socket.on('connect_error', (err) => {
+  appendLog('error', 'Error de conexión Socket.io: ' + err.message);
+});
