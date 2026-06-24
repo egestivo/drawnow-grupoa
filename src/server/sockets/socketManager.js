@@ -1,14 +1,30 @@
 const roomManager = require('../controller/roomController');
 const userManager = require('../controller/userManager');
-
+const jwt = require('jsonwebtoken');
 
 module.exports = (io) => {
+
+  // Middleware de autenticación JWT para sockets
+  io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+      return next(new Error('No autenticado'));
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'drawnow_auth_secret_dev');
+      socket.jwtUser = decoded; // { id, username }
+      next();
+    } catch (err) {
+      return next(new Error('Token inválido'));
+    }
+  });
 
   const parseRoomId = (value) => {
     const roomId = Number.parseInt(value, 10);
     return Number.isNaN(roomId) ? null : roomId;
   };
-
 
   const emitGlobalUpdates = () => {
     io.emit('rooms-list-updated', { rooms: roomManager.getRooms() });
@@ -19,7 +35,6 @@ module.exports = (io) => {
     });
     io.emit('users-online-updated', userManager.getStats());
   };
-
 
   const sendError = (callback, message) => {
     if (callback) {
@@ -82,39 +97,19 @@ module.exports = (io) => {
     console.log('Conexion: ' + socket.id);
     socket.kickedRooms = new Set();
 
-    socket.on('login', (data, callback) => {
-      const username = data && typeof data.username === 'string'
-        ? data.username.trim()
-        : '';
-
-      if (!username) {
-        sendError(callback, 'Nombre requerido');
-        return;
-      }
-
-      if (userManager.isUsernameTaken(username, socket.id)) {
-        sendError(callback, 'Ese nombre ya está en uso. Elige otro.');
-        return;
-      }
-
-      socket.username = username;
-
-      const colors = [
-        '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb',
-        '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784',
-        '#aed581', '#ffb74d', '#ff8a65'
-      ];
-      const userColor = colors[Math.floor(Math.random() * colors.length)];
-      socket.color = userColor;
-
-      userManager.addUser(socket.id, username, userColor);
-
-      if (callback) callback({ success: true, color: userColor });
-      console.log('Login: ' + username);
-
-      emitGlobalUpdates();
-    });
-
+    // Login automático desde JWT — ya no se necesita evento 'login' manual
+    const username = socket.jwtUser.username;
+    const colors = [
+      '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb',
+      '#64b5f6', '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784',
+      '#aed581', '#ffb74d', '#ff8a65'
+    ];
+    const userColor = colors[Math.floor(Math.random() * colors.length)];
+    socket.username = username;
+    socket.color = userColor;
+    userManager.addUser(socket.id, username, userColor);
+    console.log('Conectado autenticado: ' + username);
+    emitGlobalUpdates();
 
     socket.on('list-rooms', (data, callback) => {
       const rooms = roomManager.getRooms();
@@ -122,13 +117,7 @@ module.exports = (io) => {
       socket.emit('rooms-list-updated', { rooms });
     });
 
-
     socket.on('create-room', (data, callback) => {
-      if (!socket.username) {
-        sendError(callback, 'Usuario no identificado');
-        return;
-      }
-
       const roomName = data && typeof data.roomName === 'string'
         ? data.roomName.trim()
         : '';
@@ -139,19 +128,12 @@ module.exports = (io) => {
       }
 
       const room = roomManager.createRoom(roomName, socket.username);
-
       if (callback) callback({ success: true, room });
       emitGlobalUpdates();
       console.log('Sala creada: ' + room.name + ' por: ' + socket.username);
     });
 
-
     socket.on('join-room', (data, callback) => {
-      if (!socket.username) {
-        sendError(callback, 'Usuario no identificado');
-        return;
-      }
-
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
         sendError(callback, 'Sala no valida');
@@ -163,7 +145,6 @@ module.exports = (io) => {
         return;
       }
 
-      // Si el usuario estaba en otra sala, se retira primero
       if (socket.currentRoom && socket.currentRoom !== roomId) {
         const previousRoom = roomManager.leaveRoom(socket.currentRoom, socket.id);
         socket.leave('room-' + socket.currentRoom);
@@ -202,7 +183,6 @@ module.exports = (io) => {
       console.log('Unio: ' + socket.username + ' a sala ' + roomId);
     });
 
-
     socket.on('leave-room', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
@@ -218,7 +198,6 @@ module.exports = (io) => {
 
       socket.leave('room-' + roomId);
 
-      // Limpiar cualquier trazo en curso del socket
       if (socket._currentStroke) socket._currentStroke = null;
 
       if (callback) callback({ success: true });
@@ -236,13 +215,7 @@ module.exports = (io) => {
       }
     });
 
-
     socket.on('delete-room', (data, callback) => {
-      if (!socket.username) {
-        sendError(callback, 'Usuario no identificado');
-        return;
-      }
-
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
         sendError(callback, 'Sala no valida');
@@ -270,7 +243,6 @@ module.exports = (io) => {
       console.log('Sala ' + roomId + ' eliminada por: ' + socket.username);
     });
 
-
     socket.on('delete-room-admin', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
       if (!roomId) {
@@ -294,7 +266,6 @@ module.exports = (io) => {
       console.log('Sala ' + roomId + ' eliminada por Administrador');
     });
 
-
     socket.on('logout-user', () => {
       if (socket.currentRoom) {
         const roomId = socket.currentRoom;
@@ -316,7 +287,6 @@ module.exports = (io) => {
       socket.color = null;
       emitGlobalUpdates();
     });
-
 
     socket.on('kick-user-admin', (data, callback) => {
       const roomId = parseRoomId(data && data.roomId);
@@ -361,16 +331,13 @@ module.exports = (io) => {
       emitGlobalUpdates();
     });
 
-
     socket.on('draw-start', (data) => {
       if (!socket.currentRoom || !socket.username) return;
-      // data: { strokeId, meta, point }
       socket._currentStroke = {
         strokeId: data && data.strokeId ? data.strokeId : null,
         meta: data && data.meta ? data.meta : {},
         segments: []
       };
-      // Opcional: añadir primer punto si viene en data.point
       if (data && data.point) {
         const p = data.point;
         socket._currentStroke.segments.push({
@@ -386,21 +353,17 @@ module.exports = (io) => {
       }
     });
 
-    // Datos de trazo (segmentos) enviados mientras el usuario arrastra
     socket.on('draw-data', (data) => {
       if (!socket.currentRoom || !socket.username) return;
 
-      // Transmitir inmediatamente el segmento a los demás para dibujo en vivo
       io.to('room-' + socket.currentRoom).emit('render-draw', {
         ...data,
         user: socket.username
       });
 
-      // Si existe un trazo en curso en este socket, agrupar el segmento
       if (socket._currentStroke && (!data.strokeId || data.strokeId === socket._currentStroke.strokeId)) {
         socket._currentStroke.segments.push({ ...data });
       } else {
-        // Si no hay trazo en curso, como fallback, tratar el segmento como acción individual
         pushToHistory(socket.currentRoom, {
           ...data,
           user: socket.username,
@@ -412,10 +375,7 @@ module.exports = (io) => {
 
     socket.on('draw-end', (data) => {
       if (!socket.currentRoom || !socket.username) return;
-      if (!socket._currentStroke) {
-        if (typeof data === 'function') return; // evitar confusión con callback
-        return;
-      }
+      if (!socket._currentStroke) return;
 
       const entry = {
         __type: 'stroke',
@@ -429,12 +389,9 @@ module.exports = (io) => {
       };
 
       pushToHistory(socket.currentRoom, entry);
-      // Limpiar buffer del socket
       socket._currentStroke = null;
-
       broadcastRoomHistory(socket.currentRoom);
     });
-
 
     socket.on('clear-canvas', () => {
       if (!socket.currentRoom) return;
@@ -446,7 +403,6 @@ module.exports = (io) => {
       io.to('room-' + socket.currentRoom).emit('canvas-cleared');
       broadcastRoomHistory(socket.currentRoom);
     });
-
 
     socket.on('undo-drawing', (callback) => {
       if (!socket.currentRoom) {
@@ -469,7 +425,6 @@ module.exports = (io) => {
       broadcastRoomHistory(roomId);
     });
 
-
     socket.on('redo-drawing', (callback) => {
       if (!socket.currentRoom) {
         sendError(callback, 'No estás en ninguna sala');
@@ -491,17 +446,12 @@ module.exports = (io) => {
       broadcastRoomHistory(roomId);
     });
 
-
     socket.on('flood-fill', (data) => {
       if (!socket.currentRoom) return;
-
       pushToHistory(socket.currentRoom, { __type: 'flood-fill', ...data });
-
       io.to('room-' + socket.currentRoom).emit('render-flood-fill', data);
-
       emitRoomHistoryState(socket.currentRoom);
     });
-
 
     socket.on('disconnect', () => {
       console.log('Desconexion: ' + (socket.username || socket.id));
@@ -519,15 +469,10 @@ module.exports = (io) => {
       roomManager.removeUserFromAll(socket.id);
       userManager.removeUser(socket.id);
 
-      if (socket.kickedRooms) {
-        socket.kickedRooms.clear();
-      }
-
-      // Limpiar trazo en curso si existe
+      if (socket.kickedRooms) socket.kickedRooms.clear();
       if (socket._currentStroke) socket._currentStroke = null;
 
       emitGlobalUpdates();
     });
   });
 };
-
