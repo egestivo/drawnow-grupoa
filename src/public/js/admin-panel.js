@@ -4,16 +4,16 @@ function getAdminToken() {
 
 const adminToken = getAdminToken();
 if (!adminToken) {
-  window.location.href = '/auth/admin';
+  window.location.href = '/login';
 }
 
 try {
   const payload = JSON.parse(atob(adminToken.split('.')[1]));
   if (payload.username !== 'admin') {
-    window.location.href = '/auth/admin';
+    window.location.href = '/login';
   }
 } catch (e) {
-  window.location.href = '/auth/admin';
+  window.location.href = '/login';
 }
 
 const socket = io({ auth: { token: adminToken } });
@@ -106,7 +106,8 @@ setInterval(async () => {
 
 adminLogoutBtn.addEventListener('click', () => {
   localStorage.removeItem('adminToken');
-  window.location.href = '/auth/admin';
+  localStorage.removeItem('token');
+  window.location.href = '/login';
 });
 
 clearLogsBtn.addEventListener('click', () => {

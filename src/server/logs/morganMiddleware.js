@@ -10,9 +10,13 @@ const stream = {
   }
 };
 
+function skipAuth(req) {
+  return req.url.startsWith('/api/auth/') || req.url.startsWith('/auth/');
+}
+
 const morganMiddleware = morgan(
   ':method :url :status :res[content-length] - :response-time ms',
-  { stream }
+  { stream, skip: skipAuth }
 );
 
 module.exports = morganMiddleware;

@@ -15,11 +15,6 @@ router.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, '../../public/pages/login.html'));
 });
 
-// Página de autenticación de administrador
-router.get('/auth/admin', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../public/pages/auth-admin.html'));
-});
-
 // Panel de administración (protegido)
 router.get('/admin', (req, res) => {
   const token = req.query.token || (req.headers.authorization && req.headers.authorization.split(' ')[1]);
@@ -33,7 +28,7 @@ router.get('/admin', (req, res) => {
       // Token inválido, redirigir
     }
   }
-  res.redirect('/auth/admin');
+  res.redirect('/login');
 });
 
 module.exports = router;

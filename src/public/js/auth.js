@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem('token', data.token);
             localStorage.setItem('username', data.user.username);
             if (data.user.username === 'admin') {
+              localStorage.setItem('adminToken', data.token);
               window.location.href = '/admin?token=' + encodeURIComponent(data.token);
             } else {
               window.location.href = '/';

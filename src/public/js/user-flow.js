@@ -90,7 +90,7 @@ function showError(message) {
 }
 
 adminAccessBtn.addEventListener('click', () => {
-  window.location.href = '/auth/admin';
+  window.location.href = '/login';
 });
 
 backFromLoginBtn.addEventListener('click', () => {

@@ -74,7 +74,7 @@ const TCP_PORT = process.env.TCP_PORT || 4000;
 
 server.listen(PORT, () => {
   logger.info('Servidor web iniciado en puerto ' + PORT, { category: 'sistema' });
-  logger.info('Dashboard admin: http://localhost:' + PORT + '/auth/admin', { category: 'sistema' });
+  logger.info('Dashboard admin: http://localhost:' + PORT + '/admin', { category: 'sistema' });
   logger.info('API stats: http://localhost:' + PORT + '/api/stats', { category: 'sistema' });
 });
 tcpServer.listen(TCP_PORT, () => {
