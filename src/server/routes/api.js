@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
 const roomManager = require('../controller/roomController');
 const userManager = require('../controller/userManager');
+const { publishMessage } = require('../rabbitmq/producer');
+const jwt = require('jsonwebtoken');
 const Sala = require('../models/Sala');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'drawnow_auth_secret_dev';
@@ -100,6 +101,27 @@ router.get('/room/:id', (req, res) => {
       createdAt: room.createdAt
     }
   });
+});
+
+// Endpoint para emitir alertas globales (simula admin)
+router.post('/broadcast-alert', (req, res) => {
+  const { message } = req.body;
+  if (!message) {
+    return res.status(400).json({ success: false, message: 'Message is required' });
+  }
+
+  // Publicar la alerta en RabbitMQ
+  const published = publishMessage('system.alert.broadcast', {
+    type: 'alert',
+    message: message,
+    timestamp: new Date()
+  });
+
+  if (published) {
+    res.json({ success: true, message: 'Alerta enviada al sistema de colas' });
+  } else {
+    res.status(500).json({ success: false, message: 'Error enviando alerta' });
+  }
 });
 
 module.exports = router;

@@ -3,6 +3,7 @@ const userManager = require('../controller/userManager');
 const jwt = require('jsonwebtoken');
 const Sala = require('../models/Sala');
 const logger = require('../logs/logger');
+const { publishMessage } = require('../rabbitmq/producer');
 
 module.exports = (io) => {
 
@@ -135,8 +136,10 @@ module.exports = (io) => {
       }
 
       const room = roomManager.createRoom(roomName, socket.username);
-      Sala.create({ nombre: roomName || `Sala ${room.id}`, idUsuario: socket.jwtUser.id }).catch(err => {
-        logger.error('Error guardando sala en MongoDB: ' + err.message, { category: 'sistema' });
+      publishMessage('room.create', {
+        roomId: room.id,
+        nombre: room.name,
+        idUsuario: socket.jwtUser.id
       });
       if (callback) callback({ success: true, room });
       emitGlobalUpdates();
@@ -247,6 +250,8 @@ module.exports = (io) => {
       if (callback) callback(result);
       if (!result.success) return;
 
+      publishMessage('room.delete', { roomId, nombre: room.name });
+
       io.to('room-' + roomId).emit('room-deleted', {
         message: result.message
       });
@@ -274,6 +279,8 @@ module.exports = (io) => {
 
       if (callback) callback(result);
       if (!result.success) return;
+
+      publishMessage('room.delete', { roomId });
 
       canvasHistory.delete(roomId);
       canvasRedoHistory.delete(roomId);

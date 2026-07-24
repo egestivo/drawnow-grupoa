@@ -5,13 +5,17 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "setup:mq": "node src/server/rabbitmq/setup.js",
+    "consume:rooms": "node src/server/rabbitmq/consumeRooms.js",
+    "consume:alerts": "node src/server/rabbitmq/consumeAlerts.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "amqplib": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
