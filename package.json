@@ -5,17 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/server/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "setup:drawings": "node src/server/setup-drawings.js",
-    "consume:drawings": "node src/server/consumers/consumer-drawings.js",
-    "consume:dlq": "node src/server/consumers/consumer-dlq-drawings.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "amqplib": "^0.10.4",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
