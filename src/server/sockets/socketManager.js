@@ -3,11 +3,21 @@ const userManager = require('../controller/userManager');
 const jwt = require('jsonwebtoken');
 const Sala = require('../models/Sala');
 const logger = require('../logs/logger');
+const { publishMessage } = require('../rabbitmq/producer');
 
 module.exports = (io) => {
+  const serviceTokenExpected = process.env.INTERNAL_SERVICE_TOKEN || 'drawnow_internal_service_dev';
 
   io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
+    const auth = socket.handshake.auth || {};
+    const serviceToken = auth.serviceToken;
+    const token = auth.token;
+
+    if (serviceTokenExpected && serviceToken && serviceToken === serviceTokenExpected) {
+      socket.isService = true;
+      socket.jwtUser = { id: 'internal-service', username: 'internal-service' };
+      return next();
+    }
 
     if (!token) {
       return next(new Error('No autenticado'));
@@ -95,6 +105,68 @@ module.exports = (io) => {
   };
 
   io.on('connection', (socket) => {
+    if (socket.isService) {
+      logger.info('Canal de servicio MQ conectado: ' + socket.id, { category: 'rabbitmq' });
+
+      socket.on('mq-global-alert', (data, callback) => {
+        const message = data && typeof data.message === 'string' ? data.message.trim() : '';
+        if (!message) {
+          if (callback) callback({ success: false, message: 'Mensaje de alerta inválido' });
+          return;
+        }
+
+        const payload = {
+          type: 'alert',
+          message,
+          timestamp: data && data.timestamp ? data.timestamp : new Date().toISOString()
+        };
+
+        io.emit('global-alert', payload);
+        logger.warn('Alerta global emitida por consumidor MQ: ' + message, { category: 'sistema' });
+        if (callback) callback({ success: true });
+      });
+
+      socket.on('mq-draw-processed', (data, callback) => {
+        const roomId = Number.parseInt(data && data.roomId, 10);
+        if (!roomId || !Number.isFinite(roomId)) {
+          if (callback) callback({ success: false, message: 'roomId inválido' });
+          return;
+        }
+
+        const drawData = data && data.drawData ? data.drawData : data;
+        if (!drawData || !Number.isFinite(drawData.x) || !Number.isFinite(drawData.y)) {
+          if (callback) callback({ success: false, message: 'Trazo inválido' });
+          return;
+        }
+
+        io.to('room-' + roomId).emit('render-draw', {
+          ...drawData,
+          user: data.user || 'Usuario'
+        });
+
+        if (callback) callback({ success: true });
+      });
+
+      socket.on('mq-room-persisted', (data, callback) => {
+        const action = data && data.action ? data.action : 'unknown';
+        const roomName = data && data.nombre ? data.nombre : 'sin-nombre';
+        logger.info('Persistencia de sala confirmada por consumidor MQ: action=' + action + ' room=' + roomName, { category: 'rabbitmq' });
+        io.to('admins').emit('room-persisted', {
+          action,
+          roomId: data && data.roomId ? data.roomId : null,
+          nombre: roomName,
+          persistedAt: new Date().toISOString()
+        });
+        if (callback) callback({ success: true });
+      });
+
+      socket.on('disconnect', () => {
+        logger.info('Canal de servicio MQ desconectado: ' + socket.id, { category: 'rabbitmq' });
+      });
+
+      return;
+    }
+
     const userLabel = socket.jwtUser ? socket.jwtUser.username : 'unknown';
     logger.debug('Socket conectado: ' + socket.id + ' user=' + userLabel, { category: 'sistema' });
     socket.kickedRooms = new Set();
@@ -135,8 +207,10 @@ module.exports = (io) => {
       }
 
       const room = roomManager.createRoom(roomName, socket.username);
-      Sala.create({ nombre: roomName || `Sala ${room.id}`, idUsuario: socket.jwtUser.id }).catch(err => {
-        logger.error('Error guardando sala en MongoDB: ' + err.message, { category: 'sistema' });
+      publishMessage('room.create', {
+        roomId: room.id,
+        nombre: room.name,
+        idUsuario: socket.jwtUser.id
       });
       if (callback) callback({ success: true, room });
       emitGlobalUpdates();
@@ -247,6 +321,8 @@ module.exports = (io) => {
       if (callback) callback(result);
       if (!result.success) return;
 
+      publishMessage('room.delete', { roomId, nombre: room.name });
+
       io.to('room-' + roomId).emit('room-deleted', {
         message: result.message
       });
@@ -274,6 +350,8 @@ module.exports = (io) => {
 
       if (callback) callback(result);
       if (!result.success) return;
+
+      publishMessage('room.delete', { roomId });
 
       canvasHistory.delete(roomId);
       canvasRedoHistory.delete(roomId);
@@ -378,10 +456,25 @@ module.exports = (io) => {
     socket.on('draw-data', (data) => {
       if (!socket.currentRoom || !socket.username) return;
 
-      io.to('room-' + socket.currentRoom).emit('render-draw', {
-        ...data,
-        user: socket.username
-      });
+      const drawEvent = {
+        roomId: socket.currentRoom,
+        user: socket.username,
+        drawData: {
+          ...data,
+          x: Number(data && data.x),
+          y: Number(data && data.y)
+        },
+        createdAt: new Date().toISOString()
+      };
+
+      const published = publishMessage('draw.event', drawEvent);
+      if (!published) {
+        logger.warn('Fallo publicando draw.event, aplicando fallback directo a websocket', { category: 'rabbitmq' });
+        io.to('room-' + socket.currentRoom).emit('render-draw', {
+          ...(drawEvent.drawData || {}),
+          user: socket.username
+        });
+      }
 
       if (socket._currentStroke && (!data.strokeId || data.strokeId === socket._currentStroke.strokeId)) {
         socket._currentStroke.segments.push({ ...data });
@@ -411,6 +504,7 @@ module.exports = (io) => {
       };
 
       pushToHistory(socket.currentRoom, entry);
+
       socket._currentStroke = null;
       broadcastRoomHistory(socket.currentRoom);
     });

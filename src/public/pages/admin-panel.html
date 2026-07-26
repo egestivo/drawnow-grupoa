@@ -23,6 +23,20 @@
 
   <div class="container-fluid py-4">
 
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="admin-card-header">
+            <i class="bi bi-broadcast-pin me-2"></i>Alerta Global
+          </div>
+          <div class="card-body d-flex gap-2 flex-wrap">
+            <input type="text" class="form-control" id="globalAlertInput" placeholder="Mensaje para todos los usuarios conectados" maxlength="180">
+            <button class="btn btn-primary" id="sendGlobalAlertBtn">Enviar Alerta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- FILA DE MÉTRICAS -->
     <div class="row mb-4 g-3">
       <div class="col-md-3 col-6">

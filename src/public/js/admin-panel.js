@@ -27,6 +27,8 @@ const adminLogoutBtn = document.getElementById('adminLogoutBtn');
 const adminUserDisplay = document.getElementById('adminUserDisplay');
 const logConsole = document.getElementById('logConsole');
 const clearLogsBtn = document.getElementById('clearLogsBtn');
+const globalAlertInput = document.getElementById('globalAlertInput');
+const sendGlobalAlertBtn = document.getElementById('sendGlobalAlertBtn');
 
 const logCountInfo = document.getElementById('logCountInfo');
 const logCountWarn = document.getElementById('logCountWarn');
@@ -114,6 +116,41 @@ clearLogsBtn.addEventListener('click', () => {
   logConsole.innerHTML = '<div class="log-line log-info">[SISTEMA] Consola limpiada.</div>';
 });
 
+if (sendGlobalAlertBtn) {
+  sendGlobalAlertBtn.addEventListener('click', async () => {
+    const message = globalAlertInput ? globalAlertInput.value.trim() : '';
+    if (!message) {
+      appendLog('warn', 'Debes escribir un mensaje para la alerta global.');
+      return;
+    }
+
+    sendGlobalAlertBtn.disabled = true;
+    try {
+      const response = await fetch('/api/broadcast-alert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + adminToken
+        },
+        body: JSON.stringify({ message })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        appendLog('error', 'Error enviando alerta global: ' + (data.message || 'desconocido'));
+        return;
+      }
+
+      appendLog('info', 'Alerta global publicada: ' + message);
+      if (globalAlertInput) globalAlertInput.value = '';
+    } catch (err) {
+      appendLog('error', 'Fallo de red enviando alerta global: ' + err.message);
+    } finally {
+      sendGlobalAlertBtn.disabled = false;
+    }
+  });
+}
+
 function appendLog(level, message) {
   const line = document.createElement('div');
   const now = new Date().toLocaleTimeString('es-ES');
@@ -148,6 +185,17 @@ function appendLog(level, message) {
 
 socket.on('admin-log', (data) => {
   appendLog(data.level, data.message);
+});
+
+socket.on('global-alert', (data) => {
+  const msg = data && data.message ? data.message : 'Alerta recibida';
+  appendLog('warn', 'ALERTA GLOBAL ENTREGADA: ' + msg);
+});
+
+socket.on('room-persisted', (data) => {
+  const action = data && data.action ? data.action : 'unknown';
+  const roomName = data && data.nombre ? data.nombre : 'sin-nombre';
+  appendLog('info', 'Persistencia confirmada (' + action + ') para sala: ' + roomName);
 });
 
 window.deleteRoom = (roomId) => {
