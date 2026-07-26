@@ -6,9 +6,14 @@
   "scripts": {
     "start": "node src/server/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "infra:up": "docker compose -f docker-compose.local.yml up -d",
+    "infra:down": "docker compose -f docker-compose.local.yml down",
+    "infra:logs": "docker compose -f docker-compose.local.yml logs -f rabbitmq",
     "setup:mq": "node src/server/rabbitmq/setup.js",
     "consume:rooms": "node src/server/rabbitmq/consumeRooms.js",
-    "consume:alerts": "node src/server/rabbitmq/consumeAlerts.js"
+    "consume:alerts": "node src/server/rabbitmq/consumeAlerts.js",
+    "consume:drawings": "node src/server/rabbitmq/consumer-drawings.js",
+    "consume:dlq": "node src/server/rabbitmq/consumer-dlq.js"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +30,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "winston": "^3.19.0"
   }
 }

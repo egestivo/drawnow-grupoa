@@ -31,9 +31,19 @@ router.post('/rooms', authMiddleware, async (req, res) => {
     if (!nombre) {
       return res.status(400).json({ success: false, message: 'El nombre de la sala es requerido.' });
     }
-    const sala = new Sala({ nombre, idUsuario: req.user.id });
-    await sala.save();
-    res.status(201).json({ success: true, sala });
+    
+    const roomId = Date.now();
+    const published = publishMessage('room.create', {
+      roomId,
+      nombre,
+      idUsuario: req.user.id
+    });
+
+    if (published) {
+      res.status(202).json({ success: true, message: 'Creación de sala encolada en RabbitMQ.' });
+    } else {
+      res.status(500).json({ success: false, message: 'Error al encolar la sala.' });
+    }
   } catch (error) {
     console.error('Error creando sala:', error);
     res.status(500).json({ success: false, message: 'Error en el servidor.' });
@@ -45,15 +55,30 @@ router.post('/rooms', authMiddleware, async (req, res) => {
 // ==========================================
 router.delete('/rooms/:id', authMiddleware, async (req, res) => {
   try {
-    const sala = await Sala.findById(req.params.id);
+    const roomId = Number.parseInt(req.params.id, 10);
+    if (!Number.isFinite(roomId)) {
+      return res.status(400).json({ success: false, message: 'ID de sala inválido.' });
+    }
+
+    const sala = await Sala.findOne({ roomId });
     if (!sala) {
       return res.status(404).json({ success: false, message: 'Sala no encontrada.' });
     }
-    if (sala.idUsuario !== req.user.id) {
+    if (sala.idUsuario !== req.user.id && req.user.username !== 'admin') {
       return res.status(403).json({ success: false, message: 'No autorizado: no eres el creador de esta sala.' });
     }
-    await Sala.findByIdAndDelete(req.params.id);
-    res.json({ success: true, message: 'Sala eliminada correctamente.' });
+
+    const published = publishMessage('room.delete', {
+      roomId,
+      nombre: sala.nombre,
+      idUsuario: req.user.id
+    });
+
+    if (published) {
+      return res.status(202).json({ success: true, message: 'Eliminación de sala encolada en RabbitMQ.' });
+    }
+
+    res.status(500).json({ success: false, message: 'Error al encolar eliminación de sala.' });
   } catch (error) {
     console.error('Error eliminando sala:', error);
     res.status(500).json({ success: false, message: 'Error en el servidor.' });
@@ -103,8 +128,12 @@ router.get('/room/:id', (req, res) => {
   });
 });
 
-// Endpoint para emitir alertas globales (simula admin)
-router.post('/broadcast-alert', (req, res) => {
+// Endpoint para emitir alertas globales (solo admin)
+router.post('/broadcast-alert', authMiddleware, (req, res) => {
+  if (!req.user || req.user.username !== 'admin') {
+    return res.status(403).json({ success: false, message: 'No autorizado. Solo admin puede emitir alertas globales.' });
+  }
+
   const { message } = req.body;
   if (!message) {
     return res.status(400).json({ success: false, message: 'Message is required' });

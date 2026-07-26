@@ -264,6 +264,11 @@ socket.on('kicked-from-room', (data) => {
   showScreen(roomsScreen);
 });
 
+socket.on('global-alert', (data) => {
+  const message = data && data.message ? data.message : 'Se recibió una alerta global del sistema.';
+  alert('ALERTA GLOBAL: ' + message);
+});
+
 document.getElementById('logoutBtn').addEventListener('click', () => {
   socket.emit('logout-user');
   localStorage.removeItem('token');

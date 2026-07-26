@@ -3,9 +3,43 @@ const mongoose = require('mongoose');
 const { connectRabbitMQ } = require('./connection');
 const Sala = require('../models/Sala');
 const logger = require('../logs/logger');
+const io = require('socket.io-client');
 
 // Conectar a la base de datos
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/drawnow';
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.WS_HOST || 'localhost';
+const SERVICE_TOKEN = process.env.INTERNAL_SERVICE_TOKEN || 'drawnow_internal_service_dev';
+
+const socket = io('http://' + HOST + ':' + PORT, {
+  auth: { serviceToken: SERVICE_TOKEN },
+  transports: ['websocket']
+});
+
+socket.on('connect', () => {
+  logger.info('Consumidor de salas conectado a WebSocket interno', { category: 'rabbitmq' });
+});
+
+socket.on('connect_error', (err) => {
+  logger.error('Consumidor de salas no pudo conectar a WebSocket interno: ' + err.message, { category: 'rabbitmq' });
+});
+
+function notifyRoomPersisted(payload) {
+  return new Promise((resolve, reject) => {
+    if (!socket.connected) {
+      reject(new Error('Socket interno no conectado'));
+      return;
+    }
+
+    socket.emit('mq-room-persisted', payload, (response) => {
+      if (!response || !response.success) {
+        reject(new Error((response && response.message) || 'Servidor rechazó notificación de persistencia'));
+        return;
+      }
+      resolve();
+    });
+  });
+}
 
 const startConsumer = async () => {
   try {
@@ -23,10 +57,18 @@ const startConsumer = async () => {
 
     logger.info(`[*] Esperando mensajes en ${queue}. Para salir presiona CTRL+C`, { category: 'rabbitmq' });
 
-    channel.consume(queue, (msg) => {
+    channel.consume(queue, async (msg) => {
       if (msg !== null) {
         const routingKey = msg.fields.routingKey;
-        const content = JSON.parse(msg.content.toString());
+        let content = null;
+
+        try {
+          content = JSON.parse(msg.content.toString());
+        } catch (error) {
+          logger.error('[x] Mensaje de sala con JSON inválido', { category: 'rabbitmq' });
+          channel.nack(msg, false, false);
+          return;
+        }
         
         logger.info(`[x] Recibido ${routingKey}: Procesando...`, { category: 'rabbitmq' });
         
@@ -34,26 +76,43 @@ const startConsumer = async () => {
         setTimeout(async () => {
           try {
             if (routingKey === 'room.create') {
-              // Guardar la sala en la base de datos
-              await Sala.create({ 
-                nombre: content.nombre || `Sala ${content.roomId}`, 
-                idUsuario: content.idUsuario 
+              await Sala.updateOne(
+                { roomId: Number(content.roomId) },
+                {
+                  $set: {
+                    roomId: Number(content.roomId),
+                    nombre: content.nombre || `Sala ${content.roomId}`,
+                    idUsuario: content.idUsuario
+                  }
+                },
+                { upsert: true }
+              );
+
+              await notifyRoomPersisted({
+                action: 'create',
+                roomId: content.roomId,
+                nombre: content.nombre || `Sala ${content.roomId}`
               });
+
               logger.info(`[v] Sala '${content.nombre}' guardada en DB exitosamente.`, { category: 'rabbitmq' });
             } else if (routingKey === 'room.delete') {
-              // Aquí podríamos eliminar la sala de la base de datos si fuera necesario
-              // await Sala.deleteOne({ nombre: content.nombre });
+              await Sala.deleteOne({ roomId: Number(content.roomId) });
+
+              await notifyRoomPersisted({
+                action: 'delete',
+                roomId: content.roomId,
+                nombre: content.nombre || `Sala ${content.roomId}`
+              });
+
               logger.info(`[v] Evento de eliminación de sala '${content.roomId}' procesado.`, { category: 'rabbitmq' });
             }
-            
-            // Confirmar procesamiento exitoso (ACK)
+
             channel.ack(msg);
           } catch (error) {
             logger.error(`[x] Error procesando mensaje ${routingKey}: ` + error.message, { category: 'rabbitmq' });
-            // Rechazar mensaje en caso de error (puede ser reenviado o enviado a DLQ si estuviera configurada)
             channel.nack(msg, false, false);
           }
-        }, 5000); // 5000ms delay como requiere la guía del laboratorio
+        }, 5000);
       }
     }, {
       noAck: false // IMPORTANTE: ack manual habilitado

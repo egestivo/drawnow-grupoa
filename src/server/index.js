@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const logger = require('./logs/logger');
 const morganMiddleware = require('./logs/morganMiddleware');
 const Usuario = require('./models/Usuario');
+const { connectRabbitMQ } = require('./rabbitmq/connection');
 
 const app = express();
 
@@ -71,6 +72,18 @@ const tcpServer = createTcpServer(io);
 
 const PORT = process.env.PORT || 3000;
 const TCP_PORT = process.env.TCP_PORT || 4000;
+
+async function initRabbitMQWithRetry() {
+  try {
+    await connectRabbitMQ();
+    logger.info('Canal RabbitMQ inicializado en proceso web', { category: 'rabbitmq' });
+  } catch (err) {
+    logger.error('No se pudo inicializar RabbitMQ en proceso web: ' + err.message, { category: 'rabbitmq' });
+    setTimeout(initRabbitMQWithRetry, 5000);
+  }
+}
+
+initRabbitMQWithRetry();
 
 server.listen(PORT, () => {
   logger.info('Servidor web iniciado en puerto ' + PORT, { category: 'sistema' });
