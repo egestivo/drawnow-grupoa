@@ -17,8 +17,6 @@ const {
 } = require('../canvasHistory');
 
 module.exports = (io) => {
-  // Guardar instancia de io para que los consumidores puedan emitir mensajes
-  setIo(io);
 
   io.use((socket, next) => {
     const token = socket.handshake.auth.token;
@@ -55,6 +53,57 @@ module.exports = (io) => {
     if (callback) {
       callback({ success: false, message });
     }
+  };
+
+  const canvasHistory = new Map();
+  const canvasRedoHistory = new Map();
+  const MAX_HISTORY = 5000;
+
+  const ensureRoomHistory = (roomId) => {
+    if (!canvasHistory.has(roomId)) {
+      canvasHistory.set(roomId, []);
+    }
+    if (!canvasRedoHistory.has(roomId)) {
+      canvasRedoHistory.set(roomId, []);
+    }
+  };
+
+  const getRoomHistory = (roomId) => canvasHistory.get(roomId) || [];
+  const getRoomRedoHistory = (roomId) => canvasRedoHistory.get(roomId) || [];
+
+  const emitRoomHistoryState = (roomId) => {
+    io.to('room-' + roomId).emit('history-state-updated', {
+      roomId,
+      canUndo: getRoomHistory(roomId).length > 0,
+      canRedo: getRoomRedoHistory(roomId).length > 0
+    });
+  };
+
+  const broadcastRoomHistory = (roomId) => {
+    io.to('room-' + roomId).emit('canvas-history', getRoomHistory(roomId));
+    emitRoomHistoryState(roomId);
+  };
+
+  const pushToHistory = (roomId, entry) => {
+    ensureRoomHistory(roomId);
+    const history = canvasHistory.get(roomId);
+    if (history.length < MAX_HISTORY) {
+      history.push(entry);
+      canvasRedoHistory.set(roomId, []);
+    }
+  };
+
+  const sendCanvasHistory = (socket, roomId) => {
+    ensureRoomHistory(roomId);
+    const history = getRoomHistory(roomId);
+    if (history.length > 0) {
+      socket.emit('canvas-history', history);
+    }
+    socket.emit('history-state-updated', {
+      roomId,
+      canUndo: history.length > 0,
+      canRedo: getRoomRedoHistory(roomId).length > 0
+    });
   };
 
   io.on('connection', (socket) => {
@@ -339,13 +388,11 @@ module.exports = (io) => {
     socket.on('draw-data', (data) => {
       if (!socket.currentRoom || !socket.username) return;
 
-      // Emitir inmediatamente por WebSocket para respuesta rápida al usuario
       io.to('room-' + socket.currentRoom).emit('render-draw', {
         ...data,
         user: socket.username
       });
 
-      // Manejar _currentStroke localmente (estado específico del socket)
       if (socket._currentStroke && (!data.strokeId || data.strokeId === socket._currentStroke.strokeId)) {
         socket._currentStroke.segments.push({ ...data });
       }
@@ -380,7 +427,7 @@ module.exports = (io) => {
 
       pushToHistory(socket.currentRoom, entry);
       socket._currentStroke = null;
-      broadcastRoomHistory(io, socket.currentRoom);
+      broadcastRoomHistory(socket.currentRoom);
     });
 
     socket.on('clear-canvas', () => {
@@ -391,7 +438,7 @@ module.exports = (io) => {
         createdAt: new Date()
       });
       io.to('room-' + socket.currentRoom).emit('canvas-cleared');
-      broadcastRoomHistory(io, socket.currentRoom);
+      broadcastRoomHistory(socket.currentRoom);
     });
 
     socket.on('undo-drawing', (callback) => {
@@ -402,17 +449,17 @@ module.exports = (io) => {
 
       const roomId = socket.currentRoom;
       ensureRoomHistory(roomId);
-      const history = getRoomHistory(roomId);
+      const history = canvasHistory.get(roomId);
       if (!history.length) {
         sendError(callback, 'No hay acciones para deshacer');
         return;
       }
 
       const removed = history.pop();
-      getRoomRedoHistory(roomId).push(removed);
+      canvasRedoHistory.get(roomId).push(removed);
 
       if (callback) callback({ success: true });
-      broadcastRoomHistory(io, roomId);
+      broadcastRoomHistory(roomId);
     });
 
     socket.on('redo-drawing', (callback) => {
@@ -423,24 +470,24 @@ module.exports = (io) => {
 
       const roomId = socket.currentRoom;
       ensureRoomHistory(roomId);
-      const redoHistory = getRoomRedoHistory(roomId);
+      const redoHistory = canvasRedoHistory.get(roomId);
       if (!redoHistory.length) {
         sendError(callback, 'No hay acciones para rehacer');
         return;
       }
 
       const restored = redoHistory.pop();
-      getRoomHistory(roomId).push(restored);
+      canvasHistory.get(roomId).push(restored);
 
       if (callback) callback({ success: true });
-      broadcastRoomHistory(io, roomId);
+      broadcastRoomHistory(roomId);
     });
 
     socket.on('flood-fill', (data) => {
       if (!socket.currentRoom) return;
       pushToHistory(socket.currentRoom, { __type: 'flood-fill', ...data });
       io.to('room-' + socket.currentRoom).emit('render-flood-fill', data);
-      emitRoomHistoryState(io, socket.currentRoom);
+      emitRoomHistoryState(socket.currentRoom);
     });
 
     socket.on('disconnect', () => {
