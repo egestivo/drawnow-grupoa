@@ -1,0 +1,24 @@
+# -------------------------------------------------------------
+# Docker Compose para levantar RabbitMQ con UI de administración
+# -------------------------------------------------------------
+# Imagen: rabbitmq:3.13-management ya incluye el plugin "management"
+# que expone la consola web en el puerto 15672 y el API HTTP.
+services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: drawnow-rabbit
+    environment:
+      # Usuario/clave por defecto para poder iniciar sesión en la UI
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      # Puerto AMQP (para apps): 5672
+      - "5672:5672"
+      # Puerto UI / API HTTP (management): 15672
+      - "15672:15672"
+    volumes:
+      # Volumen persistente para que la data sobreviva reinicios
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:

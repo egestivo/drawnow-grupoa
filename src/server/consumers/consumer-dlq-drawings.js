@@ -24,22 +24,22 @@ const RABBIT_URL = process.env.RABBIT_URL || 'amqp://localhost';
 const DLQS = ['drawing.dlq'];
 
 (async () => {
-  console.log('🔍 Conectando a RabbitMQ para monitorear DLQ:', RABBIT_URL);
-  
+  console.log('Conectando a RabbitMQ para monitorear DLQ:', RABBIT_URL);
+
   const conn = await amqp.connect(RABBIT_URL);
 
   // Creamos un canal por DLQ para simplificar logs independientes
   for (const q of DLQS) {
     const ch = await conn.createChannel();
     await ch.assertQueue(q, { durable: true });
-    console.log('✅ Escuchando DLQ:', q);
+    console.log('Escuchando DLQ:', q);
 
     ch.consume(q, (msg) => {
       if (!msg) return;
-      
+
       try {
         const content = JSON.parse(msg.content.toString());
-        console.log('🚨 Trazo fallido en DLQ (' + q + '):', content);
+        console.log('Trazo fallido en DLQ (' + q + '):', content);
 
         // Registrar en logger para auditoría
         logger.error('Trazo corrupto rechazado en DLQ', {
@@ -60,15 +60,15 @@ const DLQS = ['drawing.dlq'];
 
         ch.ack(msg); // Confirmamos lectura del mensaje fallido
       } catch (error) {
-        console.error('❌ Error procesando mensaje de DLQ:', error.message);
+        console.error('Error procesando mensaje de DLQ:', error.message);
         ch.ack(msg); // Aún así hacemos ACK para no bloquear la DLQ
       }
     }, { noAck: false });
   }
 
-  console.log('🔄 Monitor de DLQ listo - Registrando trazos fallidos para auditoría');
+  console.log('Monitor de DLQ listo - Registrando trazos fallidos para auditoría');
 
 })().catch(err => {
-  console.error('❌ DLQ consumer error:', err);
+  console.error('DLQ consumer error:', err);
   process.exit(1);
 });

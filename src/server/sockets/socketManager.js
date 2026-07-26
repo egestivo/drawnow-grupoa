@@ -5,14 +5,15 @@ const Sala = require('../models/Sala');
 const logger = require('../logs/logger');
 const { publishDrawingEvent } = require('../rabbitmq');
 const { setIo } = require('../socketInstance');
-const { 
-  pushToHistory, 
-  emitRoomHistoryState, 
-  broadcastRoomHistory, 
+const {
+  pushToHistory,
+  emitRoomHistoryState,
+  broadcastRoomHistory,
   sendCanvasHistory,
   ensureRoomHistory,
   getRoomHistory,
-  getRoomRedoHistory
+  getRoomRedoHistory,
+  clearRoomHistory
 } = require('../canvasHistory');
 
 module.exports = (io) => {
@@ -218,8 +219,7 @@ module.exports = (io) => {
         socket.currentRoom = null;
       }
 
-      canvasHistory.delete(roomId);
-      canvasRedoHistory.delete(roomId);
+      clearRoomHistory(roomId);
 
       emitGlobalUpdates();
       logger.info('Sala eliminada por usuario: ' + roomId + ' por: ' + socket.username, { category: 'sistema' });
@@ -237,8 +237,7 @@ module.exports = (io) => {
       if (callback) callback(result);
       if (!result.success) return;
 
-      canvasHistory.delete(roomId);
-      canvasRedoHistory.delete(roomId);
+      clearRoomHistory(roomId);
 
       io.to('room-' + roomId).emit('room-deleted', {
         message: result.message
@@ -349,19 +348,19 @@ module.exports = (io) => {
       // Manejar _currentStroke localmente (estado específico del socket)
       if (socket._currentStroke && (!data.strokeId || data.strokeId === socket._currentStroke.strokeId)) {
         socket._currentStroke.segments.push({ ...data });
-      } else {
-        // Publicar en RabbitMQ para guardado persistente en historial
-        const payload = {
-          roomId: socket.currentRoom,
-          data: data,
-          user: socket.username,
-          kind: 'stroke',
-          timestamp: new Date().toISOString()
-        };
-
-        publishDrawingEvent('drawing.stroke', payload)
-          .catch(err => logger.error('Error publicando trazo en RabbitMQ: ' + err.message, { category: 'sistema' }));
       }
+
+      // Publicar SIEMPRE en RabbitMQ para guardado persistente en historial
+      const payload = {
+        roomId: socket.currentRoom,
+        data: data,
+        user: socket.username,
+        kind: 'stroke',
+        timestamp: new Date().toISOString()
+      };
+
+      publishDrawingEvent('drawing.stroke', payload)
+        .catch(err => logger.error('Error publicando trazo en RabbitMQ: ' + err.message, { category: 'sistema' }));
     });
 
     socket.on('draw-end', (data) => {
